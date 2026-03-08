@@ -22,30 +22,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF1E293B)),
-          onPressed: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go('/dashboard');
-            }
-          },
-        ),
-        title: const Text(
-          'Profil Pengguna',
-          style: TextStyle(
-            color: Color(0xFF1E293B),
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -54,7 +30,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             Container(
               width: double.infinity,
               color: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 32),
+              padding: const EdgeInsets.only(top: 60, bottom: 20),
               child: Column(
                 children: [
                   Stack(

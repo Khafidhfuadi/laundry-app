@@ -43,7 +43,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
       GoRoute(
         path: '/dashboard',
-        builder: (context, state) => const DashboardPage(),
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: DashboardPage()),
       ),
       GoRoute(
         path: '/outlets',
@@ -59,7 +60,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/transactions',
-        builder: (context, state) => const TransactionPage(),
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: TransactionPage()),
       ),
       GoRoute(
         path: '/transactions/add',
@@ -71,11 +73,13 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/reports',
-        builder: (context, state) => const ReportPage(),
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: ReportPage()),
       ),
       GoRoute(
         path: '/profile',
-        builder: (context, state) => const ProfilePage(),
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: ProfilePage()),
       ),
     ],
   );
