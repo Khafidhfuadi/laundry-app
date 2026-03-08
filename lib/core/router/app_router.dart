@@ -12,6 +12,7 @@ import '../../features/transactions/presentation/pages/add_transaction_page.dart
 import '../../features/expenses/presentation/pages/expense_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
+import '../../features/reports/presentation/pages/report_page.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -67,6 +68,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/expenses',
         builder: (context, state) => const ExpensePage(),
+      ),
+      GoRoute(
+        path: '/reports',
+        builder: (context, state) => const ReportPage(),
       ),
       GoRoute(
         path: '/profile',

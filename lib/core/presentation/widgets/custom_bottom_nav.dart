@@ -44,7 +44,7 @@ class CustomBottomNavBar extends StatelessWidget {
     } else if (index == 1) {
       context.go('/transactions');
     } else if (index == 2) {
-      // route to Laporan if available
+      context.push('/reports');
     } else if (index == 3) {
       context.go('/profile');
     }
