@@ -8,6 +8,7 @@ import '../../features/outlet/presentation/pages/outlet_page.dart';
 import '../../features/services/presentation/pages/service_page.dart';
 import '../../features/customers/presentation/pages/customer_page.dart';
 import '../../features/transactions/presentation/pages/transaction_page.dart';
+import '../../features/transactions/presentation/pages/add_transaction_page.dart';
 import '../../features/expenses/presentation/pages/expense_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 
@@ -57,6 +58,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/transactions',
         builder: (context, state) => const TransactionPage(),
+      ),
+      GoRoute(
+        path: '/transactions/add',
+        builder: (context, state) => const AddTransactionPage(),
       ),
       GoRoute(
         path: '/expenses',
