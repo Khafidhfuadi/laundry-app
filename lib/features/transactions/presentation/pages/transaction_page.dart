@@ -45,7 +45,7 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
     } else if (index == 2) {
       // route to Laporan if available
     } else if (index == 3) {
-      // route to Profil if available
+      context.push('/profile');
     }
   }
 

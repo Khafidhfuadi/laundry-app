@@ -34,6 +34,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       context.push('/transactions');
     } else if (index == 2) {
       context.push('/customers');
+    } else if (index == 3) {
+      context.push('/profile');
     }
   }
 
