@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:fl_chart/fl_chart.dart';
+import '../../../../core/presentation/widgets/custom_bottom_nav.dart';
 import '../../../authentication/presentation/controllers/auth_controller.dart';
 import '../../../transactions/presentation/controllers/transaction_controller.dart';
 
@@ -13,30 +14,12 @@ class DashboardPage extends ConsumerStatefulWidget {
 }
 
 class _DashboardPageState extends ConsumerState<DashboardPage> {
-  int _selectedIndex = 0;
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(transactionControllerProvider.notifier).loadTransactions();
     });
-  }
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-
-    // In a real shell routing scenario, this would navigate to different branches.
-    // Here we handle basic navigation or visual state.
-    if (index == 1) {
-      context.push('/transactions');
-    } else if (index == 2) {
-      context.push('/customers');
-    } else if (index == 3) {
-      context.push('/profile');
-    }
   }
 
   @override
@@ -408,59 +391,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       ),
 
       // 7. Custom Bottom Nav Bar with FAB
-      floatingActionButton: Container(
-        height: 64,
-        width: 64,
-        margin: const EdgeInsets.only(top: 30),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF0F62FE).withOpacity(0.3),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: FloatingActionButton(
-          onPressed: () => context.push('/transactions/add'),
-          backgroundColor: const Color(0xFF0F62FE),
-          elevation: 0,
-          shape: const CircleBorder(),
-          child: const Icon(Icons.add, color: Colors.white, size: 32),
-        ),
-      ),
+      floatingActionButton: const CustomBottomNavFab(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
-            ),
-          ],
-        ),
-        child: BottomAppBar(
-          color: Colors.white,
-          shape: const CircularNotchedRectangle(),
-          notchMargin: 8.0,
-          child: SizedBox(
-            height: 60,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildBottomNavItem(Icons.home, 'Beranda', 0),
-                _buildBottomNavItem(Icons.receipt_long, 'Pesanan', 1),
-                const SizedBox(width: 48), // Space for FAB
-                _buildBottomNavItem(Icons.people_outline, 'Pelanggan', 2),
-                _buildBottomNavItem(Icons.person_outline, 'Profil', 3),
-              ],
-            ),
-          ),
-        ),
-      ),
+      bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 0),
     );
   }
 
@@ -697,33 +630,6 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                     ? const Color(0xFFEA580C)
                     : const Color(0xFF059669),
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomNavItem(IconData icon, String label, int index) {
-    final isSelected = _selectedIndex == index;
-    final color = isSelected
-        ? const Color(0xFF0F62FE)
-        : const Color(0xFF94A3B8);
-
-    return InkWell(
-      onTap: () => _onItemTapped(index),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              color: color,
             ),
           ),
         ],

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/presentation/widgets/custom_bottom_nav.dart';
 import '../controllers/transaction_controller.dart';
 import '../../domain/entities/transaction_entity.dart';
 
@@ -14,7 +14,6 @@ class TransactionPage extends ConsumerStatefulWidget {
 
 class _TransactionPageState extends ConsumerState<TransactionPage> {
   final TextEditingController _searchController = TextEditingController();
-  final int _selectedIndex = 1; // 1 for Pesanan in Bottom Nav
   String _selectedFilter = 'Semua';
 
   final List<String> _filters = ['Semua', 'Proses', 'Siap Ambil', 'Selesai'];
@@ -35,18 +34,6 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  void _onItemTapped(int index) {
-    if (index == _selectedIndex) return;
-
-    if (index == 0) {
-      context.push('/dashboard');
-    } else if (index == 2) {
-      // route to Laporan if available
-    } else if (index == 3) {
-      context.push('/profile');
-    }
   }
 
   List<TransactionEntity> _getFilteredTransactions(
@@ -250,60 +237,10 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
         ),
       ),
 
-      // 5. Custom Bottom Nav Bar with FAB
-      floatingActionButton: Container(
-        height: 64,
-        width: 64,
-        margin: const EdgeInsets.only(top: 30),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF0F62FE).withOpacity(0.3),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: FloatingActionButton(
-          onPressed: () => context.push('/transactions/add'),
-          backgroundColor: const Color(0xFF0F62FE),
-          elevation: 0,
-          shape: const CircleBorder(),
-          child: const Icon(Icons.add, color: Colors.white, size: 32),
-        ),
-      ),
+      // Custom Bottom Nav Bar with FAB
+      floatingActionButton: const CustomBottomNavFab(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
-            ),
-          ],
-        ),
-        child: BottomAppBar(
-          color: Colors.white,
-          shape: const CircularNotchedRectangle(),
-          notchMargin: 8.0,
-          child: SizedBox(
-            height: 60,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildBottomNavItem(Icons.home_outlined, 'Beranda', 0),
-                _buildBottomNavItem(Icons.receipt_long, 'Pesanan', 1),
-                const SizedBox(width: 48), // Space for FAB
-                _buildBottomNavItem(Icons.bar_chart_outlined, 'Laporan', 2),
-                _buildBottomNavItem(Icons.person_outline, 'Profil', 3),
-              ],
-            ),
-          ),
-        ),
-      ),
+      bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 1),
     );
   }
 
@@ -487,33 +424,6 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
                   ],
                 ),
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomNavItem(IconData icon, String label, int index) {
-    final isSelected = _selectedIndex == index;
-    final color = isSelected
-        ? const Color(0xFF0F62FE)
-        : const Color(0xFF94A3B8);
-
-    return InkWell(
-      onTap: () => _onItemTapped(index),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              color: color,
             ),
           ),
         ],
