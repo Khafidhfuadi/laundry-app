@@ -3,194 +3,520 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../controllers/transaction_controller.dart';
+import '../../domain/entities/transaction_entity.dart';
 
-class TransactionPage extends ConsumerWidget {
+class TransactionPage extends ConsumerStatefulWidget {
   const TransactionPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TransactionPage> createState() => _TransactionPageState();
+}
+
+class _TransactionPageState extends ConsumerState<TransactionPage> {
+  final TextEditingController _searchController = TextEditingController();
+  final int _selectedIndex = 1; // 1 for Pesanan in Bottom Nav
+  String _selectedFilter = 'Semua';
+
+  final List<String> _filters = ['Semua', 'Proses', 'Siap Ambil', 'Selesai'];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(transactionControllerProvider.notifier).loadTransactions();
+    });
+
+    _searchController.addListener(() {
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onItemTapped(int index) {
+    if (index == _selectedIndex) return;
+
+    if (index == 0) {
+      context.push('/dashboard');
+    } else if (index == 2) {
+      // route to Laporan if available
+    } else if (index == 3) {
+      // route to Profil if available
+    }
+  }
+
+  List<TransactionEntity> _getFilteredTransactions(
+    List<TransactionEntity> allTransactions,
+  ) {
+    List<TransactionEntity> filtered = allTransactions;
+
+    // Status Filter
+    if (_selectedFilter == 'Proses') {
+      filtered = filtered.where((t) => t.status == 'PROCESS').toList();
+    } else if (_selectedFilter == 'Siap Ambil') {
+      filtered = filtered.where((t) => t.status == 'READY').toList();
+    } else if (_selectedFilter == 'Selesai') {
+      filtered = filtered
+          .where((t) => t.status == 'COMPLETED' || t.status == 'PICKED_UP')
+          .toList();
+    }
+
+    // Search Query
+    final query = _searchController.text.toLowerCase();
+    if (query.isNotEmpty) {
+      filtered = filtered.where((t) {
+        final matchCode = t.transactionCode.toLowerCase().contains(query);
+        final matchName =
+            t.customer?.name.toLowerCase().contains(query) ?? false;
+        return matchCode || matchName;
+      }).toList();
+    }
+
+    return filtered;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final transactionState = ref.watch(transactionControllerProvider);
-    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Manajemen Transaksi')),
-      body: transactionState.when(
-        data: (transactions) {
-          if (transactions.isEmpty) {
-            return const Center(child: Text('Belum ada transaksi saat ini.'));
-          }
-          return RefreshIndicator(
-            onRefresh: () => ref
-                .read(transactionControllerProvider.notifier)
-                .loadTransactions(),
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: transactions.length,
-              itemBuilder: (context, index) {
-                final trx = transactions[index];
-                final formatter = NumberFormat.currency(
-                  locale: 'id_ID',
-                  symbol: 'Rp',
-                  decimalDigits: 0,
-                );
-
-                // Menentukan warna badge status
-                Color statusColor = Colors.blue;
-                String statusText = 'Proses';
-                if (trx.status == 'READY') {
-                  statusColor = Colors.green;
-                  statusText = 'Siap Diambil';
-                } else if (trx.status == 'PICKED_UP') {
-                  statusColor = Colors.grey;
-                  statusText = 'Selesai';
-                }
-
-                // Menentukan status bayar
-                String paymentText = 'Belum Bayar';
-                Color paymentColor = Colors.red;
-                if (trx.paymentStatus == 'PAID') {
-                  paymentText = 'Lunas';
-                  paymentColor = Colors.green;
-                } else if (trx.paymentStatus == 'PARTIAL') {
-                  paymentText = 'Sebagian';
-                  paymentColor = Colors.orange;
-                }
-
-                return Card(
-                  elevation: 2,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+      backgroundColor: const Color(0xFFF8F9FA),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // 1. App Bar
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8F0FE),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.local_laundry_service,
+                          color: Color(0xFF0F62FE),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Daftar Pesanan',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1E293B),
+                        ),
+                      ),
+                    ],
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              trx.transactionCode,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: statusColor.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                statusText,
-                                style: TextStyle(
-                                  color: statusColor,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const Divider(height: 24),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.person,
-                              size: 16,
-                              color: Colors.grey,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              trx.customer?.name ?? 'Tanpa Nama',
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.payments_outlined,
-                              size: 16,
-                              color: Colors.grey,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '${formatter.format(trx.totalPrice)} • $paymentText',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: paymentColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            if (trx.status == 'PROCESS')
-                              ElevatedButton.icon(
-                                onPressed: () {
-                                  ref
-                                      .read(
-                                        transactionControllerProvider.notifier,
-                                      )
-                                      .updateStatus(trx.id, 'READY');
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green,
-                                  foregroundColor: Colors.white,
-                                ),
-                                icon: const Icon(Icons.check_circle, size: 18),
-                                label: const Text('Siap Diambil'),
-                              ),
-                            if (trx.status == 'READY')
-                              ElevatedButton.icon(
-                                onPressed: () {
-                                  ref
-                                      .read(
-                                        transactionControllerProvider.notifier,
-                                      )
-                                      .updateStatus(trx.id, 'PICKED_UP');
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: colorScheme.primary,
-                                  foregroundColor: colorScheme.onPrimary,
-                                ),
-                                icon: const Icon(Icons.done_all, size: 18),
-                                label: const Text('Selesaikan'),
-                              ),
-                          ],
-                        ),
-                      ],
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.notifications_none,
+                      color: Color(0xFF64748B),
                     ),
                   ),
-                );
-              },
+                ],
+              ),
             ),
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Text(
-            'Gagal memuat transaksi: $error',
-            style: const TextStyle(color: Colors.red),
+
+            // 2. Search Box
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: const InputDecoration(
+                    hintText: 'Cari ID transaksi atau nama pelanggan...',
+                    hintStyle: TextStyle(
+                      color: Color(0xFF94A3B8),
+                      fontSize: 14,
+                    ),
+                    prefixIcon: Icon(Icons.search, color: Color(0xFF94A3B8)),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(vertical: 14),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // 3. Filter Chips
+            SizedBox(
+              height: 40,
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                scrollDirection: Axis.horizontal,
+                itemCount: _filters.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  final filter = _filters[index];
+                  final isSelected = filter == _selectedFilter;
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedFilter = filter;
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? const Color(0xFF0F62FE)
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: isSelected
+                            ? null
+                            : Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Text(
+                        filter,
+                        style: TextStyle(
+                          color: isSelected
+                              ? Colors.white
+                              : const Color(0xFF64748B),
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // 4. Content Area
+            Expanded(
+              child: transactionState.when(
+                data: (transactions) {
+                  final filteredList = _getFilteredTransactions(transactions);
+
+                  if (filteredList.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'Belum ada transaksi.',
+                        style: TextStyle(color: Color(0xFF94A3B8)),
+                      ),
+                    );
+                  }
+
+                  return RefreshIndicator(
+                    onRefresh: () => ref
+                        .read(transactionControllerProvider.notifier)
+                        .loadTransactions(),
+                    child: ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 80),
+                      itemCount: filteredList.length,
+                      itemBuilder: (context, index) {
+                        return _buildTransactionCard(filteredList[index]);
+                      },
+                    ),
+                  );
+                },
+                loading: () => const Center(
+                  child: CircularProgressIndicator(color: Color(0xFF0F62FE)),
+                ),
+                error: (error, _) => Center(
+                  child: Text(
+                    'Gagal: $error',
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+
+      // 5. Custom Bottom Nav Bar with FAB
+      floatingActionButton: Container(
+        height: 64,
+        width: 64,
+        margin: const EdgeInsets.only(top: 30),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0F62FE).withOpacity(0.3),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: FloatingActionButton(
+          onPressed: () => context.push('/transactions/add'),
+          backgroundColor: const Color(0xFF0F62FE),
+          elevation: 0,
+          shape: const CircleBorder(),
+          child: const Icon(Icons.add, color: Colors.white, size: 32),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 20,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: BottomAppBar(
+          color: Colors.white,
+          shape: const CircularNotchedRectangle(),
+          notchMargin: 8.0,
+          child: SizedBox(
+            height: 60,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildBottomNavItem(Icons.home_outlined, 'Beranda', 0),
+                _buildBottomNavItem(Icons.receipt_long, 'Pesanan', 1),
+                const SizedBox(width: 48), // Space for FAB
+                _buildBottomNavItem(Icons.bar_chart_outlined, 'Laporan', 2),
+                _buildBottomNavItem(Icons.person_outline, 'Profil', 3),
+              ],
+            ),
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          context.push('/transactions/add');
-        },
-        icon: const Icon(Icons.add_shopping_cart),
-        label: const Text('Buat Transaksi'),
+    );
+  }
+
+  Widget _buildTransactionCard(TransactionEntity trx) {
+    final formatter = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp ',
+      decimalDigits: 0,
+    );
+
+    // Status visual mapping
+    Color statusColor;
+    Color statusBgColor;
+    String statusText;
+    IconData icon;
+    Color iconColor;
+    Color iconBgColor;
+
+    if (trx.status == 'PROCESS') {
+      statusText = 'PROSES';
+      statusColor = const Color(0xFF0F62FE);
+      statusBgColor = const Color(0xFFE8F0FE);
+      icon = Icons.sync;
+      iconColor = const Color(0xFF0F62FE);
+      iconBgColor = const Color(0xFFE8F0FE);
+    } else if (trx.status == 'READY') {
+      statusText = 'SIAP AMBIL';
+      statusColor = const Color(0xFFD97706);
+      statusBgColor = const Color(0xFFFEF3C7);
+      icon = Icons.check_circle_outline;
+      iconColor = const Color(0xFFD97706);
+      iconBgColor = const Color(0xFFFEF3C7);
+    } else {
+      statusText = 'SELESAI';
+      statusColor = const Color(0xFF059669);
+      statusBgColor = const Color(0xFFD1FAE5);
+      icon = Icons
+          .inventory_2_outlined; // Re-use an icon matching completed/archived
+      iconColor = const Color(0xFF059669);
+      iconBgColor = const Color(0xFFD1FAE5);
+    }
+
+    // Attempt to extract service name based on first item, else fallback
+    String serviceName = 'Layanan Laundry';
+    if (trx.items.isNotEmpty && trx.items.first.service != null) {
+      serviceName = trx.items.first.service!.fullName;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top section
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: iconBgColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: iconColor, size: 24),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        trx.transactionCode,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1E293B),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        trx.customer?.name ?? 'Tanpa Nama',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: statusBgColor,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    statusText,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: statusColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+
+          // Bottom section
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'LAYANAN',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF94A3B8),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        serviceName,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF1E293B),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    const Text(
+                      'TOTAL HARGA',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF94A3B8),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      formatter.format(trx.totalPrice),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0F62FE),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomNavItem(IconData icon, String label, int index) {
+    final isSelected = _selectedIndex == index;
+    final color = isSelected
+        ? const Color(0xFF0F62FE)
+        : const Color(0xFF94A3B8);
+
+    return InkWell(
+      onTap: () => _onItemTapped(index),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              color: color,
+            ),
+          ),
+        ],
       ),
     );
   }
