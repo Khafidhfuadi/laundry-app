@@ -289,14 +289,8 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
       iconBgColor = const Color(0xFFD1FAE5);
     }
 
-    // Attempt to extract service name based on first item, else fallback
-    String serviceName = 'Layanan Laundry';
-    if (trx.items.isNotEmpty && trx.items.first.serviceVariant != null) {
-      serviceName = trx.items.first.serviceVariant!.service?.name ?? 'Layanan Laundry';
-    }
-
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -309,7 +303,6 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Top section
           Padding(
@@ -330,7 +323,7 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        trx.transactionCode,
+                        trx.customer?.name ?? 'Tanpa Nama',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -339,9 +332,9 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        trx.customer?.name ?? 'Tanpa Nama',
+                        'Masuk: ${DateFormat('dd MMM yyyy').format(trx.createdAt.toLocal())}',
                         style: const TextStyle(
-                          fontSize: 14,
+                          fontSize: 13,
                           color: Color(0xFF64748B),
                         ),
                       ),
@@ -384,7 +377,7 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'LAYANAN',
+                        'TOTAL LAYANAN',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
@@ -394,7 +387,7 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        serviceName,
+                        '${trx.items.length}',
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
