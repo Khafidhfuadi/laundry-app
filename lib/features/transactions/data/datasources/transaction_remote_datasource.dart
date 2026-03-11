@@ -108,9 +108,20 @@ class TransactionRemoteDatasourceImpl implements TransactionRemoteDatasource {
     String id,
     String newStatus,
   ) async {
+    final Map<String, dynamic> updates = {'status': newStatus};
+    final now = DateTime.now().toUtc().toIso8601String();
+    
+    if (newStatus == 'PROCESS') {
+      updates['processed_at'] = now;
+    } else if (newStatus == 'READY') {
+      updates['ready_at'] = now;
+    } else if (newStatus == 'COMPLETED' || newStatus == 'PICKED_UP') {
+      updates['completed_at'] = now;
+    }
+
     await supabaseClient
         .from('transactions')
-        .update({'status': newStatus})
+        .update(updates)
         .eq('id', id);
 
     return getTransactionById(id);

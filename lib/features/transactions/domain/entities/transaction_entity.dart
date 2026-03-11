@@ -57,6 +57,9 @@ class TransactionEntity {
   final String? perfumeId;
   final DateTime estimatedCompletionDate;
   final DateTime createdAt;
+  final DateTime? processedAt;
+  final DateTime? readyAt;
+  final DateTime? completedAt;
 
   // Relations
   final CustomerEntity? customer;
@@ -77,6 +80,9 @@ class TransactionEntity {
     this.perfumeId,
     required this.estimatedCompletionDate,
     required this.createdAt,
+    this.processedAt,
+    this.readyAt,
+    this.completedAt,
     this.customer,
     this.outlet,
     this.perfume,
@@ -99,6 +105,15 @@ class TransactionEntity {
         json['estimated_completion_date'] as String,
       ),
       createdAt: DateTime.parse(json['created_at'] as String),
+      processedAt: json['processed_at'] != null 
+          ? DateTime.parse(json['processed_at'] as String) 
+          : null,
+      readyAt: json['ready_at'] != null 
+          ? DateTime.parse(json['ready_at'] as String) 
+          : null,
+      completedAt: json['completed_at'] != null 
+          ? DateTime.parse(json['completed_at'] as String) 
+          : null,
       customer: json['customers'] != null
           ? CustomerEntity.fromJson(json['customers'])
           : null,
@@ -129,6 +144,10 @@ class TransactionEntity {
       'notes': notes,
       if (perfumeId != null) 'perfume_id': perfumeId,
       'estimated_completion_date': estimatedCompletionDate.toIso8601String(),
+      'created_at': createdAt.toIso8601String(),
+      if (processedAt != null) 'processed_at': processedAt!.toIso8601String(),
+      if (readyAt != null) 'ready_at': readyAt!.toIso8601String(),
+      if (completedAt != null) 'completed_at': completedAt!.toIso8601String(),
     };
   }
 }

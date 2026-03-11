@@ -16,8 +16,7 @@ class TransactionDetailPage extends ConsumerStatefulWidget {
       _TransactionDetailPageState();
 }
 
-class _TransactionDetailPageState
-    extends ConsumerState<TransactionDetailPage> {
+class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
   bool _isUpdatingStatus = false;
 
   final _formatter = NumberFormat.currency(
@@ -30,21 +29,20 @@ class _TransactionDetailPageState
 
   // Status workflow order
   static const List<Map<String, String>> _workflowSteps = [
-    {'key': 'RECEIVED', 'label': 'DITERIMA'},
     {'key': 'PROCESS', 'label': 'PROSES'},
-    {'key': 'READY', 'label': 'SELESAI'},
-    {'key': 'PICKED_UP', 'label': 'DIAMBIL'},
+    {'key': 'READY', 'label': 'SIAP DIAMBIL'},
+    {'key': 'COMPLETED', 'label': 'SELESAI'},
   ];
 
   int _getWorkflowIndex(String status) {
     switch (status) {
       case 'PROCESS':
-        return 1;
+        return 0;
       case 'READY':
-        return 2;
+        return 1;
       case 'COMPLETED':
       case 'PICKED_UP':
-        return 3;
+        return 2;
       default:
         return 0;
     }
@@ -60,19 +58,6 @@ class _TransactionDetailPageState
         return 'PICKED_UP';
       default:
         return 'PROCESS';
-    }
-  }
-
-  String _getNextStatusLabel(String currentStatus) {
-    switch (currentStatus) {
-      case 'PROCESS':
-        return 'Tandai Selesai';
-      case 'READY':
-        return 'Tandai Diambil';
-      case 'COMPLETED':
-        return 'Tandai Sudah Diambil';
-      default:
-        return 'Update Status';
     }
   }
 
@@ -129,10 +114,59 @@ class _TransactionDetailPageState
     }
   }
 
+  Future<void> _cancelTransaction(TransactionEntity trx) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Batalkan Pesanan?'),
+        content: const Text(
+          'Pesanan yang dibatalkan tidak dapat dikembalikan. Lanjutkan?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Tidak'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+            ),
+            child: const Text('Ya, Batalkan'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final success = await ref
+        .read(transactionControllerProvider.notifier)
+        .updateStatus(trx.id, 'CANCELLED');
+
+    if (mounted) {
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Pesanan berhasil dibatalkan')),
+        );
+        context.pop();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Gagal membatalkan pesanan'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final detailAsync =
-        ref.watch(transactionDetailProvider(widget.transactionId));
+    final detailAsync = ref.watch(
+      transactionDetailProvider(widget.transactionId),
+    );
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -167,7 +201,10 @@ class _TransactionDetailPageState
 
   Widget _buildContent(TransactionEntity trx) {
     final bool isFinished =
-        trx.status == 'COMPLETED' || trx.status == 'PICKED_UP';
+        trx.status == 'COMPLETED' ||
+        trx.status == 'PICKED_UP' ||
+        trx.status == 'CANCELLED';
+    final bool isCancelled = trx.status == 'CANCELLED';
 
     return Column(
       children: [
@@ -181,14 +218,11 @@ class _TransactionDetailPageState
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildStatusBanner(trx),
-                _buildWorkflowProgress(trx),
-                _buildDivider(),
-                _buildCustomerSection(trx),
-                _buildDivider(),
+                if (!isCancelled) _buildWorkflowProgress(trx),
                 _buildItemizedBill(trx),
                 _buildDivider(),
                 _buildDateSection(trx),
-                _buildPaymentMethodSection(),
+                _buildPaymentMethodSection(trx),
                 if (trx.notes.isNotEmpty) ...[
                   _buildDivider(),
                   _buildNotesSection(trx),
@@ -225,23 +259,25 @@ class _TransactionDetailPageState
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'TRANSACTION ID',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey[500],
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '#${trx.transactionCode}',
+                      trx.customer?.name ?? 'Tanpa Nama',
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                         color: Color(0xFF1E293B),
                       ),
                     ),
+                    if (trx.customer?.phoneNumber != null &&
+                        trx.customer!.phoneNumber.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        trx.customer!.phoneNumber,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey[500],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -251,8 +287,11 @@ class _TransactionDetailPageState
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: IconButton(
-                  icon: const Icon(Icons.print_outlined,
-                      color: Color(0xFF64748B), size: 20),
+                  icon: const Icon(
+                    Icons.print_outlined,
+                    color: Color(0xFF64748B),
+                    size: 20,
+                  ),
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Fitur cetak segera hadir')),
@@ -260,18 +299,54 @@ class _TransactionDetailPageState
                   },
                 ),
               ),
-              const SizedBox(width: 8),
-              Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(10),
+              if (trx.status != 'CANCELLED' &&
+                  trx.status != 'COMPLETED' &&
+                  trx.status != 'PICKED_UP') ...[
+                const SizedBox(width: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: PopupMenuButton<String>(
+                    icon: const Icon(
+                      Icons.more_vert,
+                      color: Color(0xFF64748B),
+                      size: 20,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    onSelected: (value) {
+                      if (value == 'cancel') {
+                        _cancelTransaction(trx);
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'cancel',
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.cancel_outlined,
+                              color: Color(0xFFDC2626),
+                              size: 20,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              'Batalkan Pesanan',
+                              style: TextStyle(
+                                color: Color(0xFFDC2626),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                child: IconButton(
-                  icon: const Icon(Icons.more_vert,
-                      color: Color(0xFF64748B), size: 20),
-                  onPressed: () {},
-                ),
-              ),
+              ],
             ],
           ),
         ),
@@ -282,6 +357,34 @@ class _TransactionDetailPageState
   // ─── STATUS BANNER ────────────────────────────────────────────────────
 
   Widget _buildStatusBanner(TransactionEntity trx) {
+    if (trx.status == 'CANCELLED') {
+      return Container(
+        margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFEF2F2),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFFECACA)),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.cancel, color: Color(0xFFEF4444)),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Pesanan ini telah dibatalkan.',
+                style: TextStyle(
+                  color: Color(0xFF991B1B),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     Color statusColor;
     Color statusBgColor;
     String statusText;
@@ -294,7 +397,7 @@ class _TransactionDetailPageState
         statusBgColor = const Color(0xFFD1FAE5);
         break;
       case 'PARTIAL':
-        statusText = 'SEBAGIAN';
+        statusText = 'DP';
         statusColor = const Color(0xFFD97706);
         statusBgColor = const Color(0xFFFEF3C7);
         break;
@@ -337,8 +440,10 @@ class _TransactionDetailPageState
                   ),
                   const SizedBox(height: 4),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: statusBgColor,
                       borderRadius: BorderRadius.circular(6),
@@ -379,6 +484,68 @@ class _TransactionDetailPageState
               ),
             ],
           ),
+          if (trx.paymentStatus == 'PARTIAL') ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'DIBAYAR (DP)',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[500],
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _formatter.format(trx.paidAmount),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1E293B),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        'SISA KEKURANGAN',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[500],
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _formatter.format(trx.totalPrice - trx.paidAmount),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFFDC2626),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
           // Tombol Tandai Lunas
           if (!isPaid) ...[
             const SizedBox(height: 12),
@@ -453,7 +620,7 @@ class _TransactionDetailPageState
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'WORKFLOW PROGRESS',
+                'STATUS',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
@@ -462,8 +629,10 @@ class _TransactionDetailPageState
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: badgeBgColor,
                   borderRadius: BorderRadius.circular(6),
@@ -485,18 +654,23 @@ class _TransactionDetailPageState
           // Timeline progress - flat approach: circles & lines in one Row
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Row(
-              children: _buildTimelineRow(currentIndex),
-            ),
+            child: Row(children: _buildTimelineRow(currentIndex)),
           ),
           const SizedBox(height: 10),
           // Labels row
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 0),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: List.generate(_workflowSteps.length, (index) {
                 final isActive = index <= currentIndex;
                 final isCurrent = index == currentIndex;
+
+                DateTime? stepTime;
+                if (index == 0) stepTime = trx.processedAt;
+                if (index == 1) stepTime = trx.readyAt;
+                if (index == 2) stepTime = trx.completedAt;
+
                 return Expanded(
                   child: Column(
                     children: [
@@ -504,22 +678,43 @@ class _TransactionDetailPageState
                         _workflowSteps[index]['label']!,
                         style: TextStyle(
                           fontSize: 9,
-                          fontWeight:
-                              isCurrent ? FontWeight.w700 : FontWeight.w500,
+                          fontWeight: isCurrent
+                              ? FontWeight.w700
+                              : FontWeight.w500,
                           color: isActive
                               ? const Color(0xFF0F62FE)
                               : Colors.grey[400],
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      if (index == 0)
+                      if (stepTime != null)
                         Text(
-                          DateFormat('dd MMM HH:mm').format(trx.createdAt.toLocal()),
+                          DateFormat('dd MMM HH:mm').format(stepTime.toLocal()),
                           style: TextStyle(
                             fontSize: 8,
                             color: isActive
                                 ? const Color(0xFF0F62FE)
                                 : Colors.grey[400],
+                          ),
+                          textAlign: TextAlign.center,
+                        )
+                      else if (isActive && stepTime == null)
+                        Text(
+                          DateFormat(
+                            'dd MMM HH:mm',
+                          ).format(trx.createdAt.toLocal()),
+                          style: TextStyle(
+                            fontSize: 8,
+                            color: const Color(0xFF0F62FE),
+                          ),
+                          textAlign: TextAlign.center,
+                        )
+                      else
+                        Text(
+                          '-',
+                          style: TextStyle(
+                            fontSize: 8,
+                            color: Colors.grey[400],
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -593,70 +788,6 @@ class _TransactionDetailPageState
     return widgets;
   }
 
-  // ─── CUSTOMER SECTION ─────────────────────────────────────────────────
-
-  Widget _buildCustomerSection(TransactionEntity trx) {
-    final customer = trx.customer;
-    return Container(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'PELANGGAN',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: Colors.grey[500],
-              letterSpacing: 0.5,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            customer?.name ?? 'Tanpa Nama',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF1E293B),
-            ),
-          ),
-          const SizedBox(height: 4),
-          if (customer?.phoneNumber != null &&
-              customer!.phoneNumber.isNotEmpty)
-            Text(
-              customer.phoneNumber,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF0F62FE),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          if (customer?.address != null && customer!.address.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.location_on_outlined,
-                    size: 16, color: Colors.grey[400]),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    customer.address,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey[600],
-                      height: 1.4,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
   // ─── ITEMIZED BILL ────────────────────────────────────────────────────
 
   Widget _buildItemizedBill(TransactionEntity trx) {
@@ -666,7 +797,7 @@ class _TransactionDetailPageState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'ITEMIZED BILL',
+            'DETAIL PESANAN',
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
@@ -682,7 +813,7 @@ class _TransactionDetailPageState
             final serviceName = variant?.service?.name ?? 'Layanan';
             final variantName = variant?.variantName ?? '';
             final displayName = variantName.isNotEmpty
-                ? '$serviceName + $variantName'
+                ? '$serviceName ($variantName)'
                 : serviceName;
             final unitType = variant?.unitType ?? 'Pcs';
             final price = variant?.price ?? 0;
@@ -766,8 +897,8 @@ class _TransactionDetailPageState
   Widget _buildDateSection(TransactionEntity trx) {
     final bool isOverdue =
         trx.estimatedCompletionDate.isBefore(DateTime.now()) &&
-            trx.status != 'COMPLETED' &&
-            trx.status != 'PICKED_UP';
+        trx.status != 'COMPLETED' &&
+        trx.status != 'PICKED_UP';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -778,7 +909,7 @@ class _TransactionDetailPageState
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'CHECK-IN',
+                  'MASUK',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
@@ -803,7 +934,7 @@ class _TransactionDetailPageState
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'DUE DATE',
+                  'EST. SELESAI',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
@@ -830,32 +961,65 @@ class _TransactionDetailPageState
     );
   }
 
-  // ─── PAYMENT METHOD ───────────────────────────────────────────────────
+  // ─── PAYMENT METHOD & PARFUM ─────────────────────────────────────────
 
-  Widget _buildPaymentMethodSection() {
+  Widget _buildPaymentMethodSection(TransactionEntity trx) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'METODE BAYAR',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: Colors.grey[500],
-              letterSpacing: 0.5,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'METODE BAYAR',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey[500],
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'TUNAI (CASH)',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 4),
-          const Text(
-            'TUNAI (CASH)',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF1E293B),
+          if (trx.perfume != null)
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'PARFUM',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.grey[500],
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    trx.perfume!.name,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1E293B),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -882,8 +1046,11 @@ class _TransactionDetailPageState
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.warning_amber_rounded,
-                        color: Color(0xFFF57C00), size: 18),
+                    const Icon(
+                      Icons.warning_amber_rounded,
+                      color: Color(0xFFF57C00),
+                      size: 18,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       'KETERANGAN',
@@ -983,7 +1150,7 @@ class _TransactionDetailPageState
                 },
                 icon: const Icon(Icons.chat_outlined, size: 18),
                 label: const Text(
-                  'KIRIM ULANG WHATSAPP',
+                  'KIRIM WHATSAPP',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,

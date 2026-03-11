@@ -652,9 +652,9 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                     strokeWidth: 2,
                   ),
                 )
-              : const Icon(Icons.send),
+              : const Icon(Icons.save),
           label: Text(
-            _isLoading ? 'Menyimpan...' : 'Simpan & Kirim WhatsApp',
+            _isLoading ? 'Menyimpan...' : 'Simpan',
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           style: FilledButton.styleFrom(

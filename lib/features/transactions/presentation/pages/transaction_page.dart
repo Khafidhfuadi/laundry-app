@@ -17,7 +17,7 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedFilter = 'Semua';
 
-  final List<String> _filters = ['Semua', 'Proses', 'Siap Ambil', 'Selesai'];
+  final List<String> _filters = ['Semua', 'Proses', 'Siap Ambil', 'Selesai', 'Dibatalkan'];
 
   @override
   void initState() {
@@ -51,6 +51,8 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
       filtered = filtered
           .where((t) => t.status == 'COMPLETED' || t.status == 'PICKED_UP')
           .toList();
+    } else if (_selectedFilter == 'Dibatalkan') {
+      filtered = filtered.where((t) => t.status == 'CANCELLED').toList();
     }
 
     // Search Query
@@ -279,6 +281,13 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
       icon = Icons.check_circle_outline;
       iconColor = const Color(0xFFD97706);
       iconBgColor = const Color(0xFFFEF3C7);
+    } else if (trx.status == 'CANCELLED') {
+      statusText = 'DIBATALKAN';
+      statusColor = const Color(0xFFDC2626);
+      statusBgColor = const Color(0xFFFEE2E2);
+      icon = Icons.cancel_outlined;
+      iconColor = const Color(0xFFDC2626);
+      iconBgColor = const Color(0xFFFEE2E2);
     } else {
       statusText = 'SELESAI';
       statusColor = const Color(0xFF059669);
