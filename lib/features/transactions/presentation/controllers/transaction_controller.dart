@@ -50,7 +50,10 @@ class TransactionController extends AsyncNotifier<List<TransactionEntity>> {
 
   Future<bool> createTransaction(TransactionEntity transaction) async {
     final result = await _repository.createTransaction(transaction);
-    return result.fold((failure) => false, (_) {
+    return result.fold((failure) {
+      print('Gagal buat transaksi dari repository: ${failure.message}');
+      return false;
+    }, (_) {
       loadTransactions();
       return true;
     });

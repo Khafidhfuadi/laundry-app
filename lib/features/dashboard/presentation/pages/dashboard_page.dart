@@ -413,7 +413,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               else
                 ...recentTransactions.map((trx) {
                   final String serviceSummary = trx.items.isNotEmpty
-                      ? '${trx.items.first.service?.fullName ?? 'Layanan'} - ${trx.items.first.quantity} ${trx.items.first.service?.unitType ?? 'item'}${trx.items.length > 1 ? ' (+${trx.items.length - 1} lainnya)' : ''}'
+                      ? '${trx.items.first.serviceVariant?.service?.name ?? 'Layanan'} - ${trx.items.first.quantity} ${trx.items.first.serviceVariant?.unitType ?? 'item'}${trx.items.length > 1 ? ' (+${trx.items.length - 1} lainnya)' : ''}'
                       : 'Transaksi tanpa layanan';
                   
                   return Padding(

@@ -9,11 +9,8 @@ abstract class ServiceRepository {
   Future<Either<Failure, ServiceEntity>> createService({
     required String categoryName,
     required String itemName,
-    required String variant,
-    required String unitType,
-    required double price,
-    required String serviceType,
-    required int estimatedHours,
+    required String processType,
+    required List<ServiceVariantEntity> variants,
   });
   Future<Either<Failure, ServiceEntity>> updateService(ServiceEntity service);
   Future<Either<Failure, Unit>> deleteService(String id);

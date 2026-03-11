@@ -33,21 +33,15 @@ class ServiceRepositoryImpl implements ServiceRepository {
   Future<Either<Failure, ServiceEntity>> createService({
     required String categoryName,
     required String itemName,
-    required String variant,
-    required String unitType,
-    required double price,
-    required String serviceType,
-    required int estimatedHours,
+    required String processType,
+    required List<ServiceVariantEntity> variants,
   }) async {
     try {
       final service = await remoteDatasource.createService(
         categoryName: categoryName,
         itemName: itemName,
-        variant: variant,
-        unitType: unitType,
-        price: price,
-        serviceType: serviceType,
-        estimatedHours: estimatedHours,
+        processType: processType,
+        variants: variants,
       );
       return right(service);
     } catch (e) {

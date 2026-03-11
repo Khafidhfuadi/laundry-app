@@ -32,20 +32,12 @@ class _ServicePageState extends ConsumerState<ServicePage> {
   List<ServiceEntity> _filtered(List<ServiceEntity> all) {
     return all.where((s) {
       final matchQuery = _searchQuery.isEmpty ||
-          s.fullName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          s.categoryName.toLowerCase().contains(_searchQuery.toLowerCase());
+          s.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          (s.categoryName.toLowerCase().contains(_searchQuery.toLowerCase()) && s.categoryName != 'Layanan Umum');
       final matchCat =
           _selectedCategory == null || s.categoryName == _selectedCategory;
       return matchQuery && matchCat;
     }).toList();
-  }
-
-  Map<String, List<ServiceEntity>> _groupByCategory(List<ServiceEntity> list) {
-    final map = <String, List<ServiceEntity>>{};
-    for (final s in list) {
-      map.putIfAbsent(s.categoryName, () => []).add(s);
-    }
-    return map;
   }
 
   Future<void> _confirmDelete(ServiceEntity service) async {
@@ -67,7 +59,7 @@ class _ServicePageState extends ConsumerState<ServicePage> {
             children: [
               const TextSpan(text: 'Yakin ingin menghapus layanan '),
               TextSpan(
-                text: service.fullName,
+                text: service.name,
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   color: _textDark,
@@ -131,6 +123,14 @@ class _ServicePageState extends ConsumerState<ServicePage> {
         );
       }
     }
+  }
+
+  // Fungsi utilitas format waktu
+  String _formatHours(int hours) {
+    if (hours >= 24 && hours % 24 == 0) {
+      return '${hours ~/ 24} Hari';
+    }
+    return '$hours Jam';
   }
 
   @override
@@ -217,7 +217,7 @@ class _ServicePageState extends ConsumerState<ServicePage> {
                       style:
                           const TextStyle(fontSize: 14, color: _textDark),
                       decoration: InputDecoration(
-                        hintText: 'Cari nama layanan atau kategori...',
+                        hintText: 'Cari nama produk...',
                         hintStyle: const TextStyle(
                             color: _textLight, fontSize: 14),
                         prefixIcon: const Icon(Icons.search,
@@ -247,31 +247,34 @@ class _ServicePageState extends ConsumerState<ServicePage> {
             Expanded(
               child: serviceState.when(
                 data: (allServices) {
-                  final categories =
-                      allServices.map((s) => s.categoryName).toSet().toList()
-                        ..sort();
+                  // Kita hide fitur kategori horizontal jika kategori default cuma Layanan Umum
+                  final showCategories = allServices.any((s) => s.categoryName != 'Layanan Umum');
+                  var categories = <String>[];
+                  if (showCategories) {
+                    categories = allServices.map((s) => s.categoryName).toSet().toList();
+                    categories.sort();
+                  }
+                  
                   final filtered = _filtered(allServices);
-                  final grouped = _groupByCategory(filtered);
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Category chips
-                      if (categories.isNotEmpty)
+                      // Category chips (optional)
+                      if (categories.isNotEmpty) ...[
                         SizedBox(
                           height: 40,
                           child: ListView(
                             scrollDirection: Axis.horizontal,
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 20),
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
                             children: [
                               _buildChip('Semua', null),
-                              ...categories
-                                  .map((cat) => _buildChip(cat, cat)),
+                              ...categories.map((cat) => _buildChip(cat, cat)),
                             ],
                           ),
                         ),
-                      const SizedBox(height: 12),
+                        const SizedBox(height: 12),
+                      ],
 
                       Expanded(
                         child: filtered.isEmpty
@@ -284,12 +287,9 @@ class _ServicePageState extends ConsumerState<ServicePage> {
                                 child: ListView.builder(
                                   padding: const EdgeInsets.fromLTRB(
                                       20, 4, 20, 20),
-                                  itemCount: grouped.keys.length,
+                                  itemCount: filtered.length,
                                   itemBuilder: (context, index) {
-                                    final cat =
-                                        grouped.keys.toList()[index];
-                                    return _buildCategorySection(
-                                        cat, grouped[cat]!);
+                                    return _buildProductGroup(filtered[index]);
                                   },
                                 ),
                               ),
@@ -382,44 +382,37 @@ class _ServicePageState extends ConsumerState<ServicePage> {
     );
   }
 
-  Widget _buildCategorySection(
-      String category, List<ServiceEntity> services) {
+  Widget _buildProductGroup(ServiceEntity service) {
     final formatter = NumberFormat.currency(
         locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
-
-    final categoryColors = <String, List<Color>>{
-      'Laundry': [const Color(0xFF0F62FE), const Color(0xFFE0E7FF)],
-      'Dry Clean': [const Color(0xFF8B5CF6), const Color(0xFFEDE9FE)],
-      'Setrika': [const Color(0xFFF97316), const Color(0xFFFFEDD5)],
-      'Sepatu': [const Color(0xFF10B981), const Color(0xFFD1FAE5)],
-      'Karpet': [const Color(0xFFEC4899), const Color(0xFFFCE7F3)],
-    };
-    final colors = categoryColors[category] ??
-        [const Color(0xFF64748B), const Color(0xFFF1F5F9)];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(bottom: 10, top: 4),
+          padding: const EdgeInsets.only(bottom: 12, top: 4),
           child: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: colors[1],
+                  color: const Color(0xFFE0E7FF),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(_categoryIcon(category),
-                    color: colors[0], size: 16),
+                child: const Icon(Icons.layers_outlined,
+                    color: _primaryColor, size: 16),
               ),
               const SizedBox(width: 10),
-              Text(
-                category,
-                style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: _textDark),
+              Expanded(
+                child: Text(
+                  service.name,
+                  style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: _textDark),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               const SizedBox(width: 8),
               Container(
@@ -430,18 +423,33 @@ class _ServicePageState extends ConsumerState<ServicePage> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  '${services.length}',
+                  '${service.variants.length} Varian',
                   style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
                       color: _textMuted),
                 ),
               ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () => showAddEditServiceBottomSheet(context, service: service),
+                child: const Icon(Icons.add_circle_outline, color: _primaryColor, size: 24),
+              ),
+              const SizedBox(width: 12),
+              GestureDetector(
+                onTap: () => showAddEditServiceBottomSheet(context, service: service), // For simplicity, edit the parent by just launching the sheet with the first variant
+                child: const Icon(Icons.edit_outlined, color: _textMuted, size: 22),
+              ),
+              const SizedBox(width: 12),
+              GestureDetector(
+                onTap: () => _confirmDelete(service),
+                child: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 22),
+              ),
             ],
           ),
         ),
-        ...services.map(
-          (s) => _buildServiceCard(s, colors[0], colors[1], formatter),
+        ...service.variants.map(
+          (v) => _buildServiceCard(service, v, formatter),
         ),
         const SizedBox(height: 16),
       ],
@@ -450,12 +458,11 @@ class _ServicePageState extends ConsumerState<ServicePage> {
 
   Widget _buildServiceCard(
     ServiceEntity service,
-    Color iconColor,
-    Color iconBg,
+    ServiceVariantEntity variant,
     NumberFormat formatter,
   ) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -469,120 +476,118 @@ class _ServicePageState extends ConsumerState<ServicePage> {
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
-        child: Row(
+        child: Column(
           children: [
-            // Icon
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: iconBg,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(Icons.local_laundry_service,
-                  color: iconColor, size: 20),
-            ),
-            const SizedBox(width: 14),
-
-            // Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    service.fullName,
-                    style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: _textDark),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      _buildTag(
-                        service.serviceType,
-                        service.serviceType == 'Express'
-                            ? const Color(0xFFFFEDD5)
-                            : const Color(0xFFE0E7FF),
-                        service.serviceType == 'Express'
-                            ? const Color(0xFFEA580C)
-                            : const Color(0xFF0F62FE),
-                      ),
-                      const SizedBox(width: 6),
-                      const Icon(Icons.schedule, size: 12, color: _textLight),
-                      const SizedBox(width: 3),
-                      Text(
-                        '${service.estimatedHours} jam',
-                        style: const TextStyle(
-                            fontSize: 12, color: _textMuted),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // Price
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  formatter.format(service.price.toInt()),
-                  style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: iconColor),
+                // Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              variant.variantName.isEmpty ? 'Umum' : variant.variantName,
+                              style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: _textDark),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (service.processType.isNotEmpty) ...[
+                            const SizedBox(width: 8),
+                            _buildTag(
+                              service.processType,
+                              const Color(0xFFF0FDF4),
+                              const Color(0xFF16A34A),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Icon(Icons.schedule, size: 14, color: _textLight),
+                          const SizedBox(width: 4),
+                          Text(
+                            _formatHours(variant.estimatedHours),
+                            style: const TextStyle(
+                                fontSize: 13, color: _textMuted, fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                      if (variant.notes.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.notes, size: 14, color: _textLight),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                variant.notes,
+                                style: const TextStyle(
+                                    fontSize: 12, color: _textMuted),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-                Text(
-                  '/ ${service.unitType}',
-                  style:
-                      const TextStyle(fontSize: 11, color: _textLight),
-                ),
-              ],
-            ),
-            const SizedBox(width: 8),
 
-            // Action menu
-            PopupMenuButton<String>(
-              onSelected: (action) {
-                if (action == 'edit') {
-                  showAddEditServiceBottomSheet(context, service: service);
-                } else if (action == 'delete') {
-                  _confirmDelete(service);
-                }
-              },
-              itemBuilder: (ctx) => [
-                const PopupMenuItem(
-                  value: 'edit',
-                  child: Row(
-                    children: [
-                      Icon(Icons.edit_outlined,
-                          size: 18, color: Color(0xFF0F62FE)),
-                      SizedBox(width: 10),
-                      Text('Edit'),
-                    ],
-                  ),
-                ),
-                const PopupMenuItem(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(Icons.delete_outline,
-                          size: 18, color: Color(0xFFEF4444)),
-                      SizedBox(width: 10),
-                      Text('Hapus',
-                          style: TextStyle(color: Color(0xFFEF4444))),
-                    ],
-                  ),
+                // Price and Actions
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      formatter.format(variant.price.toInt()),
+                      style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: _primaryColor),
+                    ),
+                    Text(
+                      '/ ${variant.unitType}',
+                      style:
+                          const TextStyle(fontSize: 12, color: _textLight, fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () async {
+                            final updatedVariant = await showVariantBottomSheet(context, variant: variant);
+                            if (updatedVariant != null) {
+                              final updatedService = service.copyWith(
+                                variants: service.variants.map((v) => v.id == variant.id ? updatedVariant : v).toList(),
+                              );
+                              ref.read(serviceControllerProvider.notifier).updateService(updatedService);
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.edit_outlined, size: 16, color: _textMuted),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ],
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              icon: const Icon(Icons.more_vert,
-                  size: 20, color: _textLight),
-              padding: EdgeInsets.zero,
-              constraints:
-                  const BoxConstraints(minWidth: 0, minHeight: 0),
             ),
           ],
         ),
@@ -592,7 +597,7 @@ class _ServicePageState extends ConsumerState<ServicePage> {
 
   Widget _buildTag(String label, Color bg, Color textColor) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
           color: bg, borderRadius: BorderRadius.circular(6)),
       child: Text(
@@ -627,29 +632,12 @@ class _ServicePageState extends ConsumerState<ServicePage> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Coba ubah kata kunci atau filter kategori.',
+            'Klik tombol + untuk menambah layanan baru.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 14, color: _textMuted, height: 1.5),
           ),
         ],
       ),
     );
-  }
-
-  IconData _categoryIcon(String category) {
-    switch (category.toLowerCase()) {
-      case 'laundry':
-        return Icons.local_laundry_service;
-      case 'dry clean':
-        return Icons.dry_cleaning;
-      case 'setrika':
-        return Icons.iron;
-      case 'sepatu':
-        return Icons.workspace_premium;
-      case 'karpet':
-        return Icons.texture;
-      default:
-        return Icons.category_outlined;
-    }
   }
 }

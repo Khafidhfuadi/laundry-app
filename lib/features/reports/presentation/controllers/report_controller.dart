@@ -126,7 +126,7 @@ class ReportController extends AsyncNotifier<ReportSummary> {
       final Map<String, int> serviceCount = {};
       for (final t in transactions) {
         for (final item in t.items) {
-          final name = item.service?.fullName ?? 'Layanan';
+          final name = item.serviceVariant?.service?.name ?? 'Layanan';
           serviceCount[name] = (serviceCount[name] ?? 0) + 1;
         }
       }

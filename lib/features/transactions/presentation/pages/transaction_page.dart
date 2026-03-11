@@ -285,8 +285,8 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
 
     // Attempt to extract service name based on first item, else fallback
     String serviceName = 'Layanan Laundry';
-    if (trx.items.isNotEmpty && trx.items.first.service != null) {
-      serviceName = trx.items.first.service!.fullName;
+    if (trx.items.isNotEmpty && trx.items.first.serviceVariant != null) {
+      serviceName = trx.items.first.serviceVariant!.service?.name ?? 'Layanan Laundry';
     }
 
     return Container(

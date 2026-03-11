@@ -1,81 +1,138 @@
-class ServiceEntity {
+class ServiceVariantEntity {
   final String id;
-  final String serviceItemId;
-  final String categoryName;
-  final String itemName;
-  final String variant;
+  final String serviceId;
+  final String variantName;
   final String unitType;
   final double price;
   final String serviceType;
   final int estimatedHours;
+  final String notes;
+  final ServiceEntity? service; // Parent reference for joins
 
-  const ServiceEntity({
+  const ServiceVariantEntity({
     required this.id,
-    required this.serviceItemId,
-    required this.categoryName,
-    required this.itemName,
-    required this.variant,
+    required this.serviceId,
+    required this.variantName,
     required this.unitType,
     required this.price,
     required this.serviceType,
     required this.estimatedHours,
+    required this.notes,
+    this.service,
   });
 
-  factory ServiceEntity.fromJson(Map<String, dynamic> json) {
-    final itemInfo = json['service_items'] ?? {};
-    final categoryInfo = itemInfo['service_categories'] ?? {};
-
-    return ServiceEntity(
+  factory ServiceVariantEntity.fromJson(Map<String, dynamic> json) {
+    return ServiceVariantEntity(
       id: json['id'] as String,
-      serviceItemId: json['service_item_id'] as String? ?? '',
-      categoryName: categoryInfo['name'] as String? ?? 'Kategori Umum',
-      itemName: itemInfo['name'] as String? ?? 'Item Umum',
-      variant: json['variant'] as String? ?? '',
-      unitType: json['unit_type'] as String? ?? 'Pcs',
+      serviceId: json['service_id'] as String,
+      variantName: json['variant'] as String? ?? '',
+      unitType: json['unit_type'] as String? ?? 'Kg',
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       serviceType: json['service_type'] as String? ?? 'Reguler',
       estimatedHours: json['estimated_hours'] as int? ?? 24,
+      notes: json['notes'] as String? ?? '',
+      service: json['services'] != null
+          ? ServiceEntity.fromJson(json['services'])
+          : null,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      if (serviceItemId.isNotEmpty) 'service_item_id': serviceItemId,
-      'variant': variant,
+      if (id.isNotEmpty) 'id': id,
+      if (serviceId.isNotEmpty) 'service_id': serviceId,
+      'variant': variantName,
       'unit_type': unitType,
       'price': price,
       'service_type': serviceType,
       'estimated_hours': estimatedHours,
+      'notes': notes,
+    };
+  }
+
+  ServiceVariantEntity copyWith({
+    String? id,
+    String? serviceId,
+    String? variantName,
+    String? unitType,
+    double? price,
+    String? serviceType,
+    int? estimatedHours,
+    String? notes,
+    ServiceEntity? service,
+  }) {
+    return ServiceVariantEntity(
+      id: id ?? this.id,
+      serviceId: serviceId ?? this.serviceId,
+      variantName: variantName ?? this.variantName,
+      unitType: unitType ?? this.unitType,
+      price: price ?? this.price,
+      serviceType: serviceType ?? this.serviceType,
+      estimatedHours: estimatedHours ?? this.estimatedHours,
+      notes: notes ?? this.notes,
+      service: service ?? this.service,
+    );
+  }
+}
+
+class ServiceEntity {
+  final String id;
+  final String name; // Nama Produk
+  final String categoryId;
+  final String categoryName;
+  final String processType;
+  final List<ServiceVariantEntity> variants;
+
+  const ServiceEntity({
+    required this.id,
+    required this.name,
+    required this.categoryId,
+    required this.categoryName,
+    required this.processType,
+    this.variants = const [],
+  });
+
+  factory ServiceEntity.fromJson(Map<String, dynamic> json) {
+    final cat = json['service_categories'] ?? {};
+    return ServiceEntity(
+      id: json['id'] as String,
+      name: json['name'] as String? ?? '',
+      categoryId: json['category_id'] as String? ?? '',
+      categoryName: cat['name'] as String? ?? 'Layanan Umum',
+      processType: json['process_type'] as String? ?? '',
+      variants: json['service_variants'] != null
+          ? (json['service_variants'] as List)
+              .map((e) => ServiceVariantEntity.fromJson(e))
+              .toList()
+          : [],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (id.isNotEmpty) 'id': id,
+      'name': name,
+      if (categoryId.isNotEmpty) 'category_id': categoryId,
+      'process_type': processType,
+      // variants biasanya tidak dimasukkan saat toJson entity parent kecuali bulk upsert manual
     };
   }
 
   ServiceEntity copyWith({
     String? id,
-    String? serviceItemId,
+    String? name,
+    String? categoryId,
     String? categoryName,
-    String? itemName,
-    String? variant,
-    String? unitType,
-    double? price,
-    String? serviceType,
-    int? estimatedHours,
+    String? processType,
+    List<ServiceVariantEntity>? variants,
   }) {
     return ServiceEntity(
       id: id ?? this.id,
-      serviceItemId: serviceItemId ?? this.serviceItemId,
+      name: name ?? this.name,
+      categoryId: categoryId ?? this.categoryId,
       categoryName: categoryName ?? this.categoryName,
-      itemName: itemName ?? this.itemName,
-      variant: variant ?? this.variant,
-      unitType: unitType ?? this.unitType,
-      price: price ?? this.price,
-      serviceType: serviceType ?? this.serviceType,
-      estimatedHours: estimatedHours ?? this.estimatedHours,
+      processType: processType ?? this.processType,
+      variants: variants ?? this.variants,
     );
-  }
-
-  // Helper untuk menampilkan nama lengkap layanan
-  String get fullName {
-    if (variant.isNotEmpty) return '$itemName $variant';
-    return itemName;
   }
 }

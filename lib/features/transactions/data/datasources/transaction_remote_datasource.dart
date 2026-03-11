@@ -25,12 +25,13 @@ class TransactionRemoteDatasourceImpl implements TransactionRemoteDatasource {
     *,
     customers (*),
     outlets (*),
+    perfumes (*),
     transaction_items (
       *,
-      services (
+      service_variants (
         *,
-        service_items (
-          name,
+        services (
+          *,
           service_categories (name)
         )
       )

@@ -52,20 +52,14 @@ class ServiceController extends AsyncNotifier<List<ServiceEntity>> {
   Future<bool> createService({
     required String categoryName,
     required String itemName,
-    required String variant,
-    required String unitType,
-    required double price,
-    required String serviceType,
-    required int estimatedHours,
+    required String processType,
+    required List<ServiceVariantEntity> variants,
   }) async {
     final result = await _repository.createService(
       categoryName: categoryName,
       itemName: itemName,
-      variant: variant,
-      unitType: unitType,
-      price: price,
-      serviceType: serviceType,
-      estimatedHours: estimatedHours,
+      processType: processType,
+      variants: variants,
     );
 
     return result.fold(
