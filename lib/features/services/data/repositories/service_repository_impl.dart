@@ -18,4 +18,61 @@ class ServiceRepositoryImpl implements ServiceRepository {
       return left(Failure(e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, List<ServiceItemOption>>> getServiceItems() async {
+    try {
+      final items = await remoteDatasource.getServiceItems();
+      return right(items);
+    } catch (e) {
+      return left(Failure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, ServiceEntity>> createService({
+    required String categoryName,
+    required String itemName,
+    required String variant,
+    required String unitType,
+    required double price,
+    required String serviceType,
+    required int estimatedHours,
+  }) async {
+    try {
+      final service = await remoteDatasource.createService(
+        categoryName: categoryName,
+        itemName: itemName,
+        variant: variant,
+        unitType: unitType,
+        price: price,
+        serviceType: serviceType,
+        estimatedHours: estimatedHours,
+      );
+      return right(service);
+    } catch (e) {
+      return left(Failure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, ServiceEntity>> updateService(
+      ServiceEntity service) async {
+    try {
+      final updated = await remoteDatasource.updateService(service);
+      return right(updated);
+    } catch (e) {
+      return left(Failure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> deleteService(String id) async {
+    try {
+      await remoteDatasource.deleteService(id);
+      return right(unit);
+    } catch (e) {
+      return left(Failure(e.toString()));
+    }
+  }
 }

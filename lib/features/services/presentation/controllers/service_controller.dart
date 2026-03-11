@@ -16,6 +16,17 @@ final serviceRepositoryProvider = Provider<ServiceRepository>((ref) {
   return ServiceRepositoryImpl(ref.watch(serviceRemoteDatasourceProvider));
 });
 
+/// Provider untuk daftar service items (untuk dropdown di form)
+final serviceItemsProvider =
+    FutureProvider<List<ServiceItemOption>>((ref) async {
+  final repo = ref.watch(serviceRepositoryProvider);
+  final result = await repo.getServiceItems();
+  return result.fold(
+    (failure) => throw Exception(failure.message),
+    (items) => items,
+  );
+});
+
 class ServiceController extends AsyncNotifier<List<ServiceEntity>> {
   late ServiceRepository _repository;
 
@@ -36,6 +47,69 @@ class ServiceController extends AsyncNotifier<List<ServiceEntity>> {
   Future<void> refresh() async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() => _fetchServices());
+  }
+
+  Future<bool> createService({
+    required String categoryName,
+    required String itemName,
+    required String variant,
+    required String unitType,
+    required double price,
+    required String serviceType,
+    required int estimatedHours,
+  }) async {
+    final result = await _repository.createService(
+      categoryName: categoryName,
+      itemName: itemName,
+      variant: variant,
+      unitType: unitType,
+      price: price,
+      serviceType: serviceType,
+      estimatedHours: estimatedHours,
+    );
+
+    return result.fold(
+      (failure) {
+        state = AsyncValue.error(failure.message, StackTrace.current);
+        return false;
+      },
+      (created) {
+        refresh();
+        // Refresh service items cache
+        ref.invalidate(serviceItemsProvider);
+        return true;
+      },
+    );
+  }
+
+  Future<bool> updateService(ServiceEntity service) async {
+    final result = await _repository.updateService(service);
+
+    return result.fold(
+      (failure) {
+        state = AsyncValue.error(failure.message, StackTrace.current);
+        return false;
+      },
+      (_) {
+        refresh();
+        return true;
+      },
+    );
+  }
+
+  Future<bool> deleteService(String id) async {
+    final result = await _repository.deleteService(id);
+
+    return result.fold(
+      (failure) {
+        state = AsyncValue.error(failure.message, StackTrace.current);
+        return false;
+      },
+      (_) {
+        refresh();
+        return true;
+      },
+    );
   }
 }
 
