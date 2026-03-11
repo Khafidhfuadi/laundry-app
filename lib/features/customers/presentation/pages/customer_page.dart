@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../domain/entities/customer_entity.dart';
 import '../controllers/customer_controller.dart';
-import '../widgets/add_customer_dialog.dart';
+import '../widgets/add_customer_bottom_sheet.dart';
 
 class CustomerPage extends ConsumerStatefulWidget {
   const CustomerPage({super.key});
@@ -25,139 +26,428 @@ class _CustomerPageState extends ConsumerState<CustomerPage> {
     final customerState = ref.watch(customerControllerProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Daftar Pelanggan'),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(60.0),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16.0,
-              vertical: 8.0,
-            ),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Cari nama pelanggan...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                filled: true,
-                fillColor: Theme.of(
-                  context,
-                ).colorScheme.surfaceContainerHighest,
+      backgroundColor: const Color(0xFFF8F9FA),
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20.0,
+                vertical: 16.0,
               ),
-              onChanged: (value) {
-                ref.read(customerControllerProvider.notifier).search(value);
-              },
-            ),
-          ),
-        ),
-      ),
-      body: customerState.when(
-        data: (customers) {
-          if (customers.isEmpty) {
-            return const Center(child: Text('Pelanggan tidak ditemukan.'));
-          }
-          return RefreshIndicator(
-            onRefresh: () async {
-              await ref
-                  .read(customerControllerProvider.notifier)
-                  .loadCustomers();
-            },
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: customers.length,
-              itemBuilder: (context, index) {
-                final customer = customers[index];
-                final lastTx = customer.lastTransactionDate != null
-                    ? DateFormat(
-                        'dd MMM yyyy',
-                      ).format(customer.lastTransactionDate!)
-                    : 'Belum pernah';
-
-                return Card(
-                  elevation: 2,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.all(16),
-                    leading: CircleAvatar(
-                      backgroundColor: Theme.of(
-                        context,
-                      ).colorScheme.primaryContainer,
-                      child: Text(
-                        customer.name.isNotEmpty
-                            ? customer.name[0].toUpperCase()
-                            : '?',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    title: Text(
-                      customer.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.phone,
-                              size: 14,
-                              color: Colors.grey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Kelola Pelanggan',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1E293B),
                             ),
-                            const SizedBox(width: 4),
-                            Text(customer.phoneNumber),
-                          ],
+                          ),
+                          const SizedBox(height: 4),
+                          customerState.when(
+                            data: (customers) => Text(
+                              '${customers.length} pelanggan terdaftar',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF64748B),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            loading: () => const Text(
+                              'Memuat...',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                            error: (_, __) => const SizedBox.shrink(),
+                          ),
+                        ],
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          showAddCustomerBottomSheet(context);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0F62FE),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(
+                            Icons.person_add_outlined,
+                            color: Colors.white,
+                            size: 22,
+                          ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Total trx: ${customer.totalTransactions} | Terakhir: $lastTx',
-                          style: const TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Search bar
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.04),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.chat, color: Colors.green),
-                      onPressed: () {
-                        // Membuka WhatsApp
+                    child: TextField(
+                      controller: _searchController,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF1E293B),
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Cari nama pelanggan...',
+                        hintStyle: const TextStyle(
+                          color: Color(0xFF94A3B8),
+                          fontSize: 14,
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          color: Color(0xFF64748B),
+                          size: 20,
+                        ),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? GestureDetector(
+                                onTap: () {
+                                  _searchController.clear();
+                                  ref
+                                      .read(
+                                        customerControllerProvider.notifier,
+                                      )
+                                      .search('');
+                                  setState(() {});
+                                },
+                                child: const Icon(
+                                  Icons.close,
+                                  color: Color(0xFF94A3B8),
+                                  size: 18,
+                                ),
+                              )
+                            : null,
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                      ),
+                      onChanged: (value) {
+                        ref
+                            .read(customerControllerProvider.notifier)
+                            .search(value);
+                        setState(() {});
                       },
-                      tooltip: 'Hubungi WhatsApp',
                     ),
                   ),
-                );
-              },
+                ],
+              ),
             ),
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Text(
-            'Gagal memuat pelanggan: $error',
-            style: const TextStyle(color: Colors.red),
-          ),
+
+            // Body content
+            Expanded(
+              child: customerState.when(
+                data: (customers) {
+                  if (customers.isEmpty) {
+                    return _buildEmptyState();
+                  }
+
+                  return RefreshIndicator(
+                    color: const Color(0xFF0F62FE),
+                    onRefresh: () async {
+                      await ref
+                          .read(customerControllerProvider.notifier)
+                          .loadCustomers();
+                    },
+                    child: ListView.builder(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 4,
+                      ),
+                      itemCount: customers.length,
+                      itemBuilder: (context, index) {
+                        final customer = customers[index];
+                        return _buildCustomerCard(context, customer);
+                      },
+                    ),
+                  );
+                },
+                loading: () => const Center(
+                  child: CircularProgressIndicator(
+                    color: Color(0xFF0F62FE),
+                  ),
+                ),
+                error: (error, stack) => Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFE4E6),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.error_outline,
+                          size: 40,
+                          color: Color(0xFFEF4444),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Gagal memuat data pelanggan',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1E293B),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        error.toString(),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          ref
+                              .read(customerControllerProvider.notifier)
+                              .loadCustomers();
+                        },
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Coba Lagi'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0F62FE),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          showDialog(
-            context: context,
-            builder: (ctx) => const AddCustomerDialog(),
-          );
-        },
-        icon: const Icon(Icons.person_add),
-        label: const Text('Tambah'),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE0E7FF),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Icon(
+              Icons.people_outline,
+              size: 48,
+              color: Color(0xFF0F62FE),
+            ),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Belum Ada Pelanggan',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1E293B),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Tambahkan pelanggan pertama Anda\ndengan menekan tombol di atas.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              color: Color(0xFF64748B),
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCustomerCard(BuildContext context, CustomerEntity customer) {
+    final lastTx = customer.lastTransactionDate != null
+        ? DateFormat('dd MMM yyyy').format(customer.lastTransactionDate!)
+        : 'Belum pernah';
+
+    final initials = customer.name.isNotEmpty
+        ? customer.name.trim().split(' ').take(2).map((w) => w[0].toUpperCase()).join()
+        : '?';
+
+    final List<Color> avatarColors = [
+      const Color(0xFF0F62FE),
+      const Color(0xFF10B981),
+      const Color(0xFFF97316),
+      const Color(0xFF8B5CF6),
+      const Color(0xFFEC4899),
+    ];
+    final avatarColor =
+        avatarColors[customer.name.hashCode.abs() % avatarColors.length];
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            // Avatar
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: avatarColor.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Center(
+                child: Text(
+                  initials,
+                  style: TextStyle(
+                    color: avatarColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    customer.name,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1E293B),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.phone_outlined,
+                        size: 13,
+                        color: Color(0xFF64748B),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        customer.phoneNumber,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      _buildBadge(
+                        '${customer.totalTransactions} transaksi',
+                        const Color(0xFFE0E7FF),
+                        const Color(0xFF0F62FE),
+                      ),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          'Terakhir: $lastTx',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF94A3B8),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // WhatsApp button
+            GestureDetector(
+              onTap: () {
+                // Membuka WhatsApp
+              },
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDCFCE7),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.chat_outlined,
+                  color: Color(0xFF16A34A),
+                  size: 20,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBadge(String label, Color bgColor, Color textColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          color: textColor,
+        ),
       ),
     );
   }

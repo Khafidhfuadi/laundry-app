@@ -349,10 +349,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   ),
                   _buildQuickActionBtn(
                     context,
-                    'Cek Status',
-                    Icons.search,
+                    'Kelola Layanan',
+                    Icons.layers_outlined,
                     const Color(0xFFE0E7FF),
-                    () => context.push('/transactions'),
+                    () => context.push('/services'),
                     iconColor: const Color(0xFF0F62FE),
                   ),
                   _buildQuickActionBtn(

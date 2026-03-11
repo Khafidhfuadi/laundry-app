@@ -1,5 +1,6 @@
 class ServiceEntity {
   final String id;
+  final String serviceItemId;
   final String categoryName;
   final String itemName;
   final String variant;
@@ -10,6 +11,7 @@ class ServiceEntity {
 
   const ServiceEntity({
     required this.id,
+    required this.serviceItemId,
     required this.categoryName,
     required this.itemName,
     required this.variant,
@@ -19,26 +21,13 @@ class ServiceEntity {
     required this.estimatedHours,
   });
 
-  // Konstruktor untuk membuat dari Supabase Join Query
-  // Format JSON yang diharapkan:
-  // {
-  //   "id": "...",
-  //   "variant": "...",
-  //   "unit_type": "Kg",
-  //   "price": 6000,
-  //   "service_type": "Reguler",
-  //   "estimated_hours": 48,
-  //   "service_items": {
-  //      "name": "Pakaian",
-  //      "service_categories": { "name": "Laundry" }
-  //   }
-  // }
   factory ServiceEntity.fromJson(Map<String, dynamic> json) {
     final itemInfo = json['service_items'] ?? {};
     final categoryInfo = itemInfo['service_categories'] ?? {};
 
     return ServiceEntity(
       id: json['id'] as String,
+      serviceItemId: json['service_item_id'] as String? ?? '',
       categoryName: categoryInfo['name'] as String? ?? 'Kategori Umum',
       itemName: itemInfo['name'] as String? ?? 'Item Umum',
       variant: json['variant'] as String? ?? '',
@@ -46,6 +35,41 @@ class ServiceEntity {
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       serviceType: json['service_type'] as String? ?? 'Reguler',
       estimatedHours: json['estimated_hours'] as int? ?? 24,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (serviceItemId.isNotEmpty) 'service_item_id': serviceItemId,
+      'variant': variant,
+      'unit_type': unitType,
+      'price': price,
+      'service_type': serviceType,
+      'estimated_hours': estimatedHours,
+    };
+  }
+
+  ServiceEntity copyWith({
+    String? id,
+    String? serviceItemId,
+    String? categoryName,
+    String? itemName,
+    String? variant,
+    String? unitType,
+    double? price,
+    String? serviceType,
+    int? estimatedHours,
+  }) {
+    return ServiceEntity(
+      id: id ?? this.id,
+      serviceItemId: serviceItemId ?? this.serviceItemId,
+      categoryName: categoryName ?? this.categoryName,
+      itemName: itemName ?? this.itemName,
+      variant: variant ?? this.variant,
+      unitType: unitType ?? this.unitType,
+      price: price ?? this.price,
+      serviceType: serviceType ?? this.serviceType,
+      estimatedHours: estimatedHours ?? this.estimatedHours,
     );
   }
 
