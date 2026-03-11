@@ -11,6 +11,7 @@ import '../../features/services/presentation/pages/service_page.dart';
 import '../../features/customers/presentation/pages/customer_page.dart';
 import '../../features/transactions/presentation/pages/transaction_page.dart';
 import '../../features/transactions/presentation/pages/add_transaction_page.dart';
+import '../../features/transactions/presentation/pages/transaction_detail_page.dart';
 import '../../features/expenses/presentation/pages/expense_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
@@ -82,6 +83,13 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/transactions/add',
         builder: (context, state) => const AddTransactionPage(),
+      ),
+      GoRoute(
+        path: '/transactions/:id',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return TransactionDetailPage(transactionId: id);
+        },
       ),
       GoRoute(
         path: '/expenses',

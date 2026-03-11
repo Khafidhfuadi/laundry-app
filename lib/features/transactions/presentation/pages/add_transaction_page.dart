@@ -516,15 +516,27 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
 
     final String generatedCode =
         'LND-${DateFormat('yMdhms').format(DateTime.now())}-${Random().nextInt(999)}';
-    final double paidAmount =
-        double.tryParse(_paidAmountController.text) ?? 0.0;
+    // Tentukan paid amount dan payment status berdasarkan pilihan user
+    double paidAmount;
+    String actualPaymentStatus;
 
-    String actualPaymentStatus = _paymentStatus;
-    if (paidAmount >= _totalPrice && _totalPrice > 0) {
+    if (_paymentStatus == 'PAID') {
+      // Lunas Langsung: bayar penuh
+      paidAmount = _totalPrice;
       actualPaymentStatus = 'PAID';
-    } else if (paidAmount > 0) {
-      actualPaymentStatus = 'PARTIAL';
+    } else if (_paymentStatus == 'PARTIAL') {
+      // DP / Sebagian: ambil dari input
+      paidAmount = double.tryParse(_paidAmountController.text) ?? 0.0;
+      if (paidAmount >= _totalPrice && _totalPrice > 0) {
+        actualPaymentStatus = 'PAID';
+      } else if (paidAmount > 0) {
+        actualPaymentStatus = 'PARTIAL';
+      } else {
+        actualPaymentStatus = 'UNPAID';
+      }
     } else {
+      // Belum Bayar
+      paidAmount = 0.0;
       actualPaymentStatus = 'UNPAID';
     }
 
@@ -1086,7 +1098,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                 ),
               ],
             ),
-            if (_paymentStatus != 'UNPAID') ...[
+            if (_paymentStatus == 'PARTIAL') ...[
               const SizedBox(height: 12),
               TextFormField(
                 controller: _paidAmountController,

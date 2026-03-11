@@ -73,3 +73,13 @@ final transactionControllerProvider =
     AsyncNotifierProvider<TransactionController, List<TransactionEntity>>(
       TransactionController.new,
     );
+
+final transactionDetailProvider =
+    FutureProvider.family<TransactionEntity, String>((ref, id) async {
+      final repository = ref.watch(transactionRepositoryProvider);
+      final result = await repository.getTransactionById(id);
+      return result.fold(
+        (failure) => throw Exception(failure.message),
+        (transaction) => transaction,
+      );
+    });

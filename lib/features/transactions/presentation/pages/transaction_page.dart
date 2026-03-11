@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/presentation/widgets/custom_bottom_nav.dart';
 import '../controllers/transaction_controller.dart';
@@ -217,7 +218,12 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 80),
                       itemCount: filteredList.length,
                       itemBuilder: (context, index) {
-                        return _buildTransactionCard(filteredList[index]);
+                        return GestureDetector(
+                          onTap: () => context.push(
+                            '/transactions/${filteredList[index].id}',
+                          ),
+                          child: _buildTransactionCard(filteredList[index]),
+                        );
                       },
                     ),
                   );

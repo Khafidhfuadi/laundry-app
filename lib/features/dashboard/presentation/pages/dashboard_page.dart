@@ -33,7 +33,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
 
     final userName = userState.value?.name ?? 'Admin';
     final outletName = activeOutletState.when(
-      data: (outlet) => outlet != null ? outlet.name.toUpperCase() : 'TIDAK ADA OUTLET DIBUKA',
+      data: (outlet) => outlet != null
+          ? outlet.name.toUpperCase()
+          : 'TIDAK ADA OUTLET DIBUKA',
       loading: () => 'MEMUAT OUTLET...',
       error: (error, stack) => 'ERROR MEMUAT OUTLET',
     );
@@ -51,13 +53,17 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
 
     if (trxState.hasValue && trxState.value != null) {
       final transactions = trxState.value!;
-      
+
       // Get recent 3 transactions
       recentTransactions = transactions.take(3).toList();
 
       for (var trx in transactions) {
-        final trxDate = DateTime(trx.createdAt.year, trx.createdAt.month, trx.createdAt.day);
-        
+        final trxDate = DateTime(
+          trx.createdAt.year,
+          trx.createdAt.month,
+          trx.createdAt.day,
+        );
+
         // Today's metrics
         if (trxDate == today) {
           trxHariIni++;
@@ -69,36 +75,43 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           trxKemarin++;
           pndpKemarin += trx.totalPrice;
         }
-        
+
         // 7 days revenue map
         final diff = today.difference(trxDate).inDays;
         if (diff >= 0 && diff < 7) {
-           dailyRevenue[6 - diff] += (trx.totalPrice / 1000); // In thousands
+          dailyRevenue[6 - diff] += (trx.totalPrice / 1000); // In thousands
         }
       }
     }
 
     // Hitung persentase perubahan vs kemarin
-    String _pctChange(num today, num yesterday) {
+    String pctChange(num today, num yesterday) {
       if (yesterday == 0) return today > 0 ? '+100%' : '0%';
       final pct = ((today - yesterday) / yesterday * 100).round();
       return pct >= 0 ? '+$pct%' : '$pct%';
     }
 
-    final trxChange = _pctChange(trxHariIni, trxKemarin);
-    final pndpChange = _pctChange(pndpTotal, pndpKemarin);
+    final trxChange = pctChange(trxHariIni, trxKemarin);
+    final pndpChange = pctChange(pndpTotal, pndpKemarin);
 
-
-    final formatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0);
+    final formatter = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp',
+      decimalDigits: 0,
+    );
     String pndpHariIni = formatter.format(pndpTotal);
 
-    double maxY = dailyRevenue.isNotEmpty ? dailyRevenue.reduce((curr, next) => curr > next ? curr : next) : 20.0;
+    double maxY = dailyRevenue.isNotEmpty
+        ? dailyRevenue.reduce((curr, next) => curr > next ? curr : next)
+        : 20.0;
     // Add 20% padding to max Y, minimum 20
     maxY = maxY < 20.0 ? 20.0 : maxY * 1.2;
-    
+
     List<String> last7DaysLabels = [];
-    for(int i = 6; i >= 0; i--) {
-       last7DaysLabels.add(DateFormat('EEE', 'id_ID').format(today.subtract(Duration(days: i))));
+    for (int i = 6; i >= 0; i--) {
+      last7DaysLabels.add(
+        DateFormat('EEE', 'id_ID').format(today.subtract(Duration(days: i))),
+      );
     }
 
     return Scaffold(
@@ -195,7 +208,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
-                                color: const Color(0xFF0F62FE).withValues(alpha: 0.8),
+                                color: const Color(
+                                  0xFF0F62FE,
+                                ).withValues(alpha: 0.8),
                                 letterSpacing: 0.5,
                               ),
                             ),
@@ -279,7 +294,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                               sideTitles: SideTitles(
                                 showTitles: true,
                                 getTitlesWidget: (value, meta) {
-                                  final isToday = value.toInt() == 6; 
+                                  final isToday = value.toInt() == 6;
                                   return Padding(
                                     padding: const EdgeInsets.only(top: 8.0),
                                     child: Text(
@@ -312,7 +327,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                           gridData: const FlGridData(show: false),
                           borderData: FlBorderData(show: false),
                           barGroups: List.generate(7, (index) {
-                            return _buildBarGroup(index, dailyRevenue[index], index == 6);
+                            return _buildBarGroup(
+                              index,
+                              dailyRevenue[index],
+                              index == 6,
+                            );
                           }),
                         ),
                       ),
@@ -407,7 +426,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 const Center(
                   child: Padding(
                     padding: EdgeInsets.all(20.0),
-                    child: Text('Belum ada transaksi.', style: TextStyle(color: Color(0xFF94A3B8))),
+                    child: Text(
+                      'Belum ada transaksi.',
+                      style: TextStyle(color: Color(0xFF94A3B8)),
+                    ),
                   ),
                 )
               else
@@ -415,7 +437,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   final String serviceSummary = trx.items.isNotEmpty
                       ? '${trx.items.first.serviceVariant?.service?.name ?? 'Layanan'} - ${trx.items.first.quantity} ${trx.items.first.serviceVariant?.unitType ?? 'item'}${trx.items.length > 1 ? ' (+${trx.items.length - 1} lainnya)' : ''}'
                       : 'Transaksi tanpa layanan';
-                  
+
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12.0),
                     child: _buildActivityItem(

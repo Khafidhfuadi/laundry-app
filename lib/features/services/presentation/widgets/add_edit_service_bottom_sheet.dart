@@ -1087,7 +1087,7 @@ class _VariantBottomSheetState extends State<_VariantBottomSheet> {
         ),
         const SizedBox(height: 6),
         DropdownButtonFormField<String>(
-          value: value,
+          initialValue: value,
           isExpanded: true,
           items: items
               .map(
