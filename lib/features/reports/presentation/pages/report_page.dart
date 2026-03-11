@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/presentation/widgets/custom_bottom_nav.dart';
+import '../../../outlet/presentation/controllers/active_outlet_controller.dart';
+import '../controllers/report_controller.dart';
+import '../../domain/entities/report_summary.dart';
 
 class ReportPage extends ConsumerStatefulWidget {
   const ReportPage({super.key});
@@ -11,32 +15,94 @@ class ReportPage extends ConsumerStatefulWidget {
 }
 
 class _ReportPageState extends ConsumerState<ReportPage> {
-  String _selectedFilter = 'Minggu Ini';
-  final List<String> _filters = [
-    'Bulan Ini',
-    'Minggu Ini',
-    'Tahun Ini',
-    'Custom',
-  ];
+  ReportPeriod _selectedPeriod = ReportPeriod.thisMonth;
+
+  final _periodLabels = {
+    ReportPeriod.thisWeek: 'Minggu Ini',
+    ReportPeriod.thisMonth: 'Bulan Ini',
+    ReportPeriod.thisYear: 'Tahun Ini',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadReport();
+    });
+  }
+
+  void _loadReport() {
+    final outletState = ref.read(activeOutletProvider);
+    final outletId = outletState.value?.id ?? '';
+    if (outletId.isNotEmpty) {
+      ref
+          .read(reportControllerProvider.notifier)
+          .loadReport(outletId, _selectedPeriod);
+    }
+  }
+
+  void _switchPeriod(ReportPeriod period) {
+    setState(() => _selectedPeriod = period);
+    final outletState = ref.read(activeOutletProvider);
+    final outletId = outletState.value?.id ?? '';
+    if (outletId.isNotEmpty) {
+      ref
+          .read(reportControllerProvider.notifier)
+          .loadReport(outletId, period);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final reportState = ref.watch(reportControllerProvider);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildAppBar(),
-              _buildFilterChips(),
-              _buildSummaryGrid(),
-              _buildBarChartSection(),
-              _buildTopServicesSection(),
-              _buildCustomerStatsSection(),
-              _buildDonutChartSection(),
-              const SizedBox(height: 100), // Spacing for bottom nav
-            ],
+        child: reportState.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.error_outline,
+                      color: Color(0xFFEF4444), size: 48),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Gagal memuat laporan:\n$error',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Color(0xFFEF4444)),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _loadReport,
+                    child: const Text('Coba Lagi'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          data: (summary) => RefreshIndicator(
+            onRefresh: () async => _loadReport(),
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildAppBar(),
+                  _buildFilterChips(),
+                  _buildSummaryGrid(summary),
+                  _buildBarChartSection(summary),
+                  _buildTopServicesSection(summary),
+                  _buildCustomerStatsSection(summary),
+                  if (summary.expenseByCategory.isNotEmpty)
+                    _buildDonutChartSection(summary),
+                  const SizedBox(height: 100),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -46,6 +112,9 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     );
   }
 
+  // -------------------------------------------------------------------------
+  // App Bar
+  // -------------------------------------------------------------------------
   Widget _buildAppBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
@@ -60,11 +129,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                   color: const Color(0xFF0F62FE),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(
-                  Icons.bar_chart,
-                  color: Colors.white,
-                  size: 20,
-                ),
+                child: const Icon(Icons.bar_chart, color: Colors.white, size: 20),
               ),
               const SizedBox(width: 12),
               const Text(
@@ -94,21 +159,20 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     );
   }
 
+  // -------------------------------------------------------------------------
+  // Filter Chips
+  // -------------------------------------------------------------------------
   Widget _buildFilterChips() {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Row(
-        children: _filters.map((filter) {
-          final isSelected = _selectedFilter == filter;
+        children: _periodLabels.entries.map((entry) {
+          final isSelected = _selectedPeriod == entry.key;
           return Padding(
             padding: const EdgeInsets.only(right: 12),
             child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedFilter = filter;
-                });
-              },
+              onTap: () => _switchPeriod(entry.key),
               child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 20,
@@ -124,12 +188,11 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                       : Border.all(color: const Color(0xFFCBD5E1)),
                 ),
                 child: Text(
-                  filter,
+                  entry.value,
                   style: TextStyle(
                     color: isSelected ? Colors.white : const Color(0xFF475569),
-                    fontWeight: isSelected
-                        ? FontWeight.w600
-                        : FontWeight.normal,
+                    fontWeight:
+                        isSelected ? FontWeight.w600 : FontWeight.normal,
                     fontSize: 13,
                   ),
                 ),
@@ -141,7 +204,16 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     );
   }
 
-  Widget _buildSummaryGrid() {
+  // -------------------------------------------------------------------------
+  // Summary Grid (Kartu Keuangan)
+  // -------------------------------------------------------------------------
+  Widget _buildSummaryGrid(ReportSummary summary) {
+    final fmt = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp',
+      decimalDigits: 0,
+    );
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
       child: GridView.count(
@@ -152,22 +224,15 @@ class _ReportPageState extends ConsumerState<ReportPage> {
         mainAxisSpacing: 16,
         childAspectRatio: 1.5,
         children: [
-          _buildStatCard('Total Pemasukan', 'Rp 15.2M', '+12.5%', true),
+          _buildStatCard('Total Pemasukan', fmt.format(summary.totalIncome),
+              true, false),
           _buildStatCard(
-            'Pengeluaran',
-            'Rp 4.5M',
-            '-2.1%',
-            false,
-            isExpense: true,
-          ),
+              'Pengeluaran', fmt.format(summary.totalExpense), false, true),
+          _buildStatCard('Laba Bersih', fmt.format(summary.netProfit),
+              summary.netProfit >= 0, false,
+              highlightValue: true),
           _buildStatCard(
-            'Laba Bersih',
-            'Rp 10.7M',
-            '+15.3%',
-            true,
-            highlightValue: true,
-          ),
-          _buildStatCard('Transaksi', '342', '+8.4%', true),
+              'Transaksi', summary.totalTransactions.toString(), true, false),
         ],
       ),
     );
@@ -176,9 +241,8 @@ class _ReportPageState extends ConsumerState<ReportPage> {
   Widget _buildStatCard(
     String title,
     String value,
-    String percent,
-    bool isPositive, {
-    bool isExpense = false,
+    bool isPositive,
+    bool isExpense, {
     bool highlightValue = false,
   }) {
     return Container(
@@ -202,50 +266,57 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             title,
             style: const TextStyle(
               color: Color(0xFF64748B),
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: highlightValue
                   ? const Color(0xFF0F62FE)
                   : const Color(0xFF1E293B),
-              fontSize: 18,
+              fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(
-                isPositive ? Icons.trending_up : Icons.trending_down,
-                color: isExpense
-                    ? const Color(0xFFEF4444)
-                    : const Color(0xFF10B981),
-                size: 14,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                percent,
-                style: TextStyle(
-                  color: isExpense
-                      ? const Color(0xFFEF4444)
-                      : const Color(0xFF10B981),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
+          Icon(
+            isExpense
+                ? Icons.trending_down
+                : (isPositive ? Icons.trending_up : Icons.trending_down),
+            color: isExpense
+                ? const Color(0xFFEF4444)
+                : (isPositive
+                    ? const Color(0xFF10B981)
+                    : const Color(0xFFEF4444)),
+            size: 16,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildBarChartSection() {
+  // -------------------------------------------------------------------------
+  // Bar Chart
+  // -------------------------------------------------------------------------
+  Widget _buildBarChartSection(ReportSummary summary) {
+    final daysCount = summary.dailyIncome.length;
+    final maxIncome = summary.dailyIncome.isNotEmpty
+        ? summary.dailyIncome.reduce((a, b) => a > b ? a : b)
+        : 0.0;
+    final maxExpense = summary.dailyExpense.isNotEmpty
+        ? summary.dailyExpense.reduce((a, b) => a > b ? a : b)
+        : 0.0;
+    final maxY = (maxIncome > maxExpense ? maxIncome : maxExpense) * 1.2;
+    final effectiveMaxY = maxY < 5 ? 20.0 : maxY;
+
+    // Tampilkan maksimal 30 batang (atau sesuai daysCount)
+    final displayCount = daysCount > 30 ? 30 : daysCount;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       child: Column(
@@ -254,9 +325,9 @@ class _ReportPageState extends ConsumerState<ReportPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Tren Keuangan (30 Hari)',
-                style: TextStyle(
+              Text(
+                'Tren Keuangan (${_periodLabels[_selectedPeriod] ?? "Periode Ini"})',
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF1E293B),
@@ -266,10 +337,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                 children: [
                   _buildLegendIndicator(const Color(0xFF0F62FE), 'Masuk'),
                   const SizedBox(width: 12),
-                  _buildLegendIndicator(
-                    const Color(0xFFFDA4AF),
-                    'Keluar',
-                  ), // Light red
+                  _buildLegendIndicator(const Color(0xFFFDA4AF), 'Keluar'),
                 ],
               ),
             ],
@@ -292,20 +360,17 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             child: BarChart(
               BarChartData(
                 alignment: BarChartAlignment.spaceAround,
-                maxY: 20,
+                maxY: effectiveMaxY,
                 barTouchData: BarTouchData(enabled: false),
                 titlesData: const FlTitlesData(show: false),
                 borderData: FlBorderData(show: false),
                 gridData: const FlGridData(show: false),
-                barGroups: [
-                  _makeGroupData(0, 10, 4),
-                  _makeGroupData(1, 12, 6),
-                  _makeGroupData(2, 11, 4),
-                  _makeGroupData(3, 16, 7),
-                  _makeGroupData(4, 15, 6),
-                  _makeGroupData(5, 18, 5),
-                  _makeGroupData(6, 12, 5),
-                ],
+                barGroups: List.generate(displayCount, (i) {
+                  final incomeOffset = daysCount - displayCount;
+                  final income = summary.dailyIncome[incomeOffset + i];
+                  final expense = summary.dailyExpense[incomeOffset + i];
+                  return _makeGroupData(i, income, expense);
+                }),
               ),
             ),
           ),
@@ -335,28 +400,34 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     );
   }
 
-  BarChartGroupData _makeGroupData(int x, double y1, double y2) {
+  BarChartGroupData _makeGroupData(int x, double income, double expense) {
+    final total = income + expense;
     return BarChartGroupData(
       x: x,
       barRods: [
         BarChartRodData(
-          toY: y1 + y2, // Stacked height
-          width: 24,
-          borderRadius: BorderRadius.circular(4),
-          color: const Color(0xFFDBEAFE), // Light blue base
-          rodStackItems: [
-            BarChartRodStackItem(
-              0,
-              y1,
-              const Color(0xFF0F62FE),
-            ), // Dark blue income
-          ],
+          toY: total < 0.01 ? 0 : total,
+          width: 10,
+          borderRadius: BorderRadius.circular(3),
+          color: const Color(0xFFDBEAFE),
+          rodStackItems: income > 0
+              ? [
+                  BarChartRodStackItem(0, income, const Color(0xFF0F62FE)),
+                ]
+              : [],
         ),
       ],
     );
   }
 
-  Widget _buildTopServicesSection() {
+  // -------------------------------------------------------------------------
+  // Top Services
+  // -------------------------------------------------------------------------
+  Widget _buildTopServicesSection(ReportSummary summary) {
+    if (summary.topServices.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
       child: Column(
@@ -371,11 +442,11 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             ),
           ),
           const SizedBox(height: 16),
-          _buildTopServiceItem('Cuci Kering + Setrika', '145 Pesanan', 0.85),
-          const SizedBox(height: 12),
-          _buildTopServiceItem('Cuci Bedcover', '82 Pesanan', 0.55),
-          const SizedBox(height: 12),
-          _buildTopServiceItem('Express 6 Jam', '48 Pesanan', 0.35),
+          ...summary.topServices.map((s) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _buildTopServiceItem(s.name,
+                    '${s.count} Pesanan', s.percentOfMax),
+              )),
         ],
       ),
     );
@@ -400,12 +471,15 @@ class _ReportPageState extends ConsumerState<ReportPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                name,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF1E293B),
+              Expanded(
+                child: Text(
+                  name,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF1E293B),
+                  ),
                 ),
               ),
               Text(
@@ -422,7 +496,8 @@ class _ReportPageState extends ConsumerState<ReportPage> {
           LinearProgressIndicator(
             value: percent,
             backgroundColor: const Color(0xFFEEF2FF),
-            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF0F62FE)),
+            valueColor:
+                const AlwaysStoppedAnimation<Color>(Color(0xFF0F62FE)),
             borderRadius: BorderRadius.circular(4),
             minHeight: 8,
           ),
@@ -431,7 +506,10 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     );
   }
 
-  Widget _buildCustomerStatsSection() {
+  // -------------------------------------------------------------------------
+  // Customer Stats
+  // -------------------------------------------------------------------------
+  Widget _buildCustomerStatsSection(ReportSummary summary) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
       child: Row(
@@ -439,8 +517,8 @@ class _ReportPageState extends ConsumerState<ReportPage> {
           Expanded(
             child: _buildClientStatCard(
               Icons.people,
-              '1.2k',
-              'PELANGGAN AKTIF',
+              summary.activeCustomers.toString(),
+              'PELANGGAN TRANSAKSI',
               const Color(0xFFEEF2FF),
               const Color(0xFF0F62FE),
             ),
@@ -449,7 +527,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
           Expanded(
             child: _buildClientStatCard(
               Icons.person_add,
-              '+42',
+              '+${summary.newCustomersThisMonth}',
               'BARU (BULAN INI)',
               const Color(0xFFECFDF5),
               const Color(0xFF10B981),
@@ -493,6 +571,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
           const SizedBox(height: 4),
           Text(
             label,
+            textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w600,
@@ -504,7 +583,34 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     );
   }
 
-  Widget _buildDonutChartSection() {
+  // -------------------------------------------------------------------------
+  // Donut Chart (Expense by Category)
+  // -------------------------------------------------------------------------
+  Widget _buildDonutChartSection(ReportSummary summary) {
+    const categoryColors = [
+      Color(0xFF0F62FE),
+      Color(0xFFFDA4AF),
+      Color(0xFFFCD34D),
+      Color(0xFF34D399),
+      Color(0xFFA78BFA),
+      Color(0xFFFB923C),
+    ];
+
+    final entries = summary.expenseByCategory.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    final total = entries.fold<double>(0, (s, e) => s + e.value);
+
+    final sections = entries.asMap().entries.map((entry) {
+      final colorIndex = entry.key % categoryColors.length;
+      return PieChartSectionData(
+        color: categoryColors[colorIndex],
+        value: entry.value.value,
+        title: '',
+        radius: 8,
+      );
+    }).toList();
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
       child: Column(
@@ -540,32 +646,20 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      PieChart(
-                        PieChartData(
-                          sectionsSpace: 0,
-                          centerSpaceRadius: 35,
-                          sections: [
-                            PieChartSectionData(
-                              color: const Color(0xFF0F62FE),
-                              value: 45,
-                              title: '',
-                              radius: 8,
-                            ),
-                            PieChartSectionData(
-                              color: const Color(0xFFFDA4AF),
-                              value: 30,
-                              title: '',
-                              radius: 8,
-                            ),
-                            PieChartSectionData(
-                              color: const Color(0xFFFCD34D),
-                              value: 25,
-                              title: '',
-                              radius: 8,
-                            ),
-                          ],
-                        ),
-                      ),
+                      PieChart(PieChartData(
+                        sectionsSpace: 0,
+                        centerSpaceRadius: 35,
+                        sections: sections.isNotEmpty
+                            ? sections
+                            : [
+                                PieChartSectionData(
+                                  color: const Color(0xFFE2E8F0),
+                                  value: 1,
+                                  title: '',
+                                  radius: 8,
+                                )
+                              ],
+                      )),
                       const Text(
                         'Ops',
                         style: TextStyle(
@@ -581,25 +675,21 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                 Expanded(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildDonutLegendItem(
-                        const Color(0xFF0F62FE),
-                        'Sabun & Kimia',
-                        '45%',
-                      ),
-                      const SizedBox(height: 12),
-                      _buildDonutLegendItem(
-                        const Color(0xFFFDA4AF),
-                        'Listrik & Air',
-                        '30%',
-                      ),
-                      const SizedBox(height: 12),
-                      _buildDonutLegendItem(
-                        const Color(0xFFFCD34D),
-                        'Gaji & Lainnya',
-                        '25%',
-                      ),
-                    ],
+                    children: entries.asMap().entries.map((entry) {
+                      final colorIndex = entry.key % categoryColors.length;
+                      final pct = total > 0
+                          ? (entry.value.value / total * 100)
+                              .toStringAsFixed(0)
+                          : '0';
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _buildDonutLegendItem(
+                          categoryColors[colorIndex],
+                          entry.value.key,
+                          '$pct%',
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ),
               ],
@@ -625,7 +715,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             Text(
               label,
               style: const TextStyle(
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: FontWeight.w500,
                 color: Color(0xFF475569),
               ),
@@ -635,7 +725,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
         Text(
           percent,
           style: const TextStyle(
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: FontWeight.bold,
             color: Color(0xFF1E293B),
           ),

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import '../../../../core/presentation/widgets/custom_bottom_nav.dart';
 import '../../../authentication/presentation/controllers/auth_controller.dart';
+import '../../../outlet/presentation/controllers/active_outlet_controller.dart';
+import 'package:go_router/go_router.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -15,9 +16,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     final userState = ref.watch(authControllerProvider);
+    final activeOutletState = ref.watch(activeOutletProvider);
+
     final userName = userState.value?.name ?? 'Admin Laundry';
-    // Dummy outlet data matching design since we might not have it strictly bound to auth right now
-    final outletName = 'Outlet Maju Jaya';
+    final outletName = activeOutletState.value?.name ?? 'Memuat Cabang...';
     final roleName = 'SUPER ADMIN';
 
     return Scaffold(
@@ -138,6 +140,17 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               title: 'Informasi Outlet',
               subtitle: 'Atur alamat dan jam operasional',
             ),
+            _buildMenuDivider(),
+            _buildMenuItem(
+              icon: Icons.swap_horiz,
+              iconColor: const Color(0xFF0F62FE),
+              iconBg: const Color(0xFFF1F5F9),
+              title: 'Ganti Cabang Utama',
+              subtitle: 'Pilih cabang lain untuk dikelola',
+              onTap: () {
+                context.push('/select-outlet');
+              },
+            ),
 
             // 3. Others Section
             _buildSectionHeader('LAINNYA'),
@@ -230,8 +243,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     required Color iconBg,
     required String title,
     String? subtitle,
+    VoidCallback? onTap,
   }) {
-    return Container(
+    return InkWell(
+      onTap: onTap,
+      child: Container(
       color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Row(
@@ -272,6 +288,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           ),
           const Icon(Icons.chevron_right, color: Color(0xFFCBD5E1)),
         ],
+      ),
       ),
     );
   }

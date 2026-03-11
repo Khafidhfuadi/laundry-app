@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../controllers/expense_controller.dart';
-import '../../../outlet/presentation/controllers/outlet_controller.dart';
+import '../../../outlet/presentation/controllers/active_outlet_controller.dart';
 import '../widgets/add_expense_dialog.dart';
 
 class ExpensePage extends ConsumerStatefulWidget {
@@ -13,8 +13,6 @@ class ExpensePage extends ConsumerStatefulWidget {
 }
 
 class _ExpensePageState extends ConsumerState<ExpensePage> {
-  String? selectedOutletId;
-
   @override
   void initState() {
     super.initState();
@@ -24,74 +22,31 @@ class _ExpensePageState extends ConsumerState<ExpensePage> {
   }
 
   void _loadInitialData() {
-    final outletsState = ref.read(outletControllerProvider);
-    if (outletsState.hasValue && outletsState.value!.isNotEmpty) {
-      final firstOutletId = outletsState.value!.first.id;
-      setState(() {
-        selectedOutletId = firstOutletId;
-      });
-      ref.read(expenseControllerProvider.notifier).loadExpenses(firstOutletId);
+    final activeOutletState = ref.read(activeOutletProvider);
+    if (activeOutletState.hasValue && activeOutletState.value != null) {
+      ref.read(expenseControllerProvider.notifier).loadExpenses(activeOutletState.value!.id);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final expenseState = ref.watch(expenseControllerProvider);
-    final outletsState = ref.watch(outletControllerProvider);
+    final activeOutletState = ref.watch(activeOutletProvider);
+
+    // Provide a continuous listen in case active outlet changes
+    ref.listen(activeOutletProvider, (previous, next) {
+      if (next.hasValue && next.value != null && next.value?.id != previous?.value?.id) {
+        ref.read(expenseControllerProvider.notifier).loadExpenses(next.value!.id);
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Pengeluaran Operasional'),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(60.0),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16.0,
-              vertical: 8.0,
-            ),
-            child: outletsState.when(
-              data: (outlets) {
-                if (outlets.isEmpty) return const SizedBox();
-                return DropdownButtonFormField<String>(
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerHighest,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                  ),
-                  initialValue: selectedOutletId,
-                  items: outlets.map((outlet) {
-                    return DropdownMenuItem(
-                      value: outlet.id,
-                      child: Text(outlet.name),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() {
-                        selectedOutletId = value;
-                      });
-                      ref
-                          .read(expenseControllerProvider.notifier)
-                          .loadExpenses(value);
-                    }
-                  },
-                );
-              },
-              loading: () => const LinearProgressIndicator(),
-              error: (_, __) => const Text('Gagal memuat cabang'),
-            ),
-          ),
-        ),
       ),
       body: expenseState.when(
         data: (expenses) {
-          if (selectedOutletId == null) {
+          if (activeOutletState.value == null) {
             return const Center(child: Text('Pilih cabang terlebih dahulu.'));
           }
           if (expenses.isEmpty) {
@@ -136,10 +91,10 @@ class _ExpensePageState extends ConsumerState<ExpensePage> {
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: () async {
-                    if (selectedOutletId != null) {
+                    if (activeOutletState.value != null) {
                       await ref
                           .read(expenseControllerProvider.notifier)
-                          .loadExpenses(selectedOutletId!);
+                          .loadExpenses(activeOutletState.value!.id);
                     }
                   },
                   child: ListView.builder(
@@ -191,16 +146,16 @@ class _ExpensePageState extends ConsumerState<ExpensePage> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: selectedOutletId != null
+        onPressed: activeOutletState.value != null
             ? () {
                 showDialog(
                   context: context,
                   builder: (ctx) =>
-                      AddExpenseDialog(outletId: selectedOutletId!),
+                      AddExpenseDialog(outletId: activeOutletState.value!.id),
                 );
               }
             : null,
-        backgroundColor: selectedOutletId != null
+        backgroundColor: activeOutletState.value != null
             ? Theme.of(context).colorScheme.error
             : Colors.grey,
         foregroundColor: Colors.white,

@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/presentation/widgets/custom_bottom_nav.dart';
 import '../../../authentication/presentation/controllers/auth_controller.dart';
+import '../../../transactions/domain/entities/transaction_entity.dart';
+import '../../../outlet/presentation/controllers/active_outlet_controller.dart';
 import '../../../transactions/presentation/controllers/transaction_controller.dart';
 
 class DashboardPage extends ConsumerStatefulWidget {
@@ -26,16 +29,76 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   Widget build(BuildContext context) {
     final userState = ref.watch(authControllerProvider);
     final trxState = ref.watch(transactionControllerProvider);
-    final userName = userState.value?.name ?? 'Admin Budi';
+    final activeOutletState = ref.watch(activeOutletProvider);
 
-    // Default dummy data if empty
-    int trxHariIni = 42;
-    String pndpHariIni = "Rp 1.250k";
+    final userName = userState.value?.name ?? 'Admin';
+    final outletName = activeOutletState.when(
+      data: (outlet) => outlet != null ? outlet.name.toUpperCase() : 'TIDAK ADA OUTLET DIBUKA',
+      loading: () => 'MEMUAT OUTLET...',
+      error: (error, stack) => 'ERROR MEMUAT OUTLET',
+    );
 
-    // In real app, calculate from trxState if available
-    if (trxState.hasValue && trxState.value!.isNotEmpty) {
-      // If we want to really show transaction count from state:
-      // trxHariIni = trxState.value!.length;
+    int trxHariIni = 0;
+    double pndpTotal = 0;
+    int trxKemarin = 0;
+    double pndpKemarin = 0;
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    List<double> dailyRevenue = List.filled(7, 0.0);
+    List<TransactionEntity> recentTransactions = [];
+
+    if (trxState.hasValue && trxState.value != null) {
+      final transactions = trxState.value!;
+      
+      // Get recent 3 transactions
+      recentTransactions = transactions.take(3).toList();
+
+      for (var trx in transactions) {
+        final trxDate = DateTime(trx.createdAt.year, trx.createdAt.month, trx.createdAt.day);
+        
+        // Today's metrics
+        if (trxDate == today) {
+          trxHariIni++;
+          pndpTotal += trx.totalPrice;
+        }
+
+        // Yesterday's metrics
+        if (trxDate == yesterday) {
+          trxKemarin++;
+          pndpKemarin += trx.totalPrice;
+        }
+        
+        // 7 days revenue map
+        final diff = today.difference(trxDate).inDays;
+        if (diff >= 0 && diff < 7) {
+           dailyRevenue[6 - diff] += (trx.totalPrice / 1000); // In thousands
+        }
+      }
+    }
+
+    // Hitung persentase perubahan vs kemarin
+    String _pctChange(num today, num yesterday) {
+      if (yesterday == 0) return today > 0 ? '+100%' : '0%';
+      final pct = ((today - yesterday) / yesterday * 100).round();
+      return pct >= 0 ? '+$pct%' : '$pct%';
+    }
+
+    final trxChange = _pctChange(trxHariIni, trxKemarin);
+    final pndpChange = _pctChange(pndpTotal, pndpKemarin);
+
+
+    final formatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp', decimalDigits: 0);
+    String pndpHariIni = formatter.format(pndpTotal);
+
+    double maxY = dailyRevenue.isNotEmpty ? dailyRevenue.reduce((curr, next) => curr > next ? curr : next) : 20.0;
+    // Add 20% padding to max Y, minimum 20
+    maxY = maxY < 20.0 ? 20.0 : maxY * 1.2;
+    
+    List<String> last7DaysLabels = [];
+    for(int i = 6; i >= 0; i--) {
+       last7DaysLabels.add(DateFormat('EEE', 'id_ID').format(today.subtract(Duration(days: i))));
     }
 
     return Scaffold(
@@ -128,11 +191,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              'OUTLET SUDIRMAN - JAKARTA',
+                              outletName,
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
-                                color: const Color(0xFF0F62FE).withOpacity(0.8),
+                                color: const Color(0xFF0F62FE).withValues(alpha: 0.8),
                                 letterSpacing: 0.5,
                               ),
                             ),
@@ -152,8 +215,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                     child: _buildSummaryCard(
                       title: 'TRANSAKSI\nHARI INI',
                       value: trxHariIni.toString(),
-                      change: '+12%',
-                      isPositive: true,
+                      change: trxChange,
+                      isPositive: !trxChange.startsWith('-'),
                       icon: Icons.receipt_long,
                     ),
                   ),
@@ -162,8 +225,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                     child: _buildSummaryCard(
                       title: 'PENDAPATAN\nHARI INI',
                       value: pndpHariIni,
-                      change: '+5%',
-                      isPositive: true,
+                      change: pndpChange,
+                      isPositive: !pndpChange.startsWith('-'),
                       icon: Icons.payments_outlined,
                     ),
                   ),
@@ -208,7 +271,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                       child: BarChart(
                         BarChartData(
                           alignment: BarChartAlignment.spaceAround,
-                          maxY: 20,
+                          maxY: maxY,
                           barTouchData: BarTouchData(enabled: false),
                           titlesData: FlTitlesData(
                             show: true,
@@ -216,26 +279,16 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                               sideTitles: SideTitles(
                                 showTitles: true,
                                 getTitlesWidget: (value, meta) {
-                                  const titles = [
-                                    'Sen',
-                                    'Sel',
-                                    'Rab',
-                                    'Kam',
-                                    'Jum',
-                                    'Sab',
-                                    'Min',
-                                  ];
-                                  final isSab =
-                                      value.toInt() == 5; // Highlight Sab
+                                  final isToday = value.toInt() == 6; 
                                   return Padding(
                                     padding: const EdgeInsets.only(top: 8.0),
                                     child: Text(
-                                      titles[value.toInt()],
+                                      last7DaysLabels[value.toInt()],
                                       style: TextStyle(
-                                        color: isSab
+                                        color: isToday
                                             ? const Color(0xFF0F62FE)
                                             : const Color(0xFF94A3B8),
-                                        fontWeight: isSab
+                                        fontWeight: isToday
                                             ? FontWeight.bold
                                             : FontWeight.normal,
                                         fontSize: 12,
@@ -258,19 +311,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                           ),
                           gridData: const FlGridData(show: false),
                           borderData: FlBorderData(show: false),
-                          barGroups: [
-                            _buildBarGroup(0, 8, false),
-                            _buildBarGroup(1, 13, false),
-                            _buildBarGroup(2, 10, false),
-                            _buildBarGroup(3, 15, false),
-                            _buildBarGroup(
-                              4,
-                              0,
-                              false,
-                            ), // Jum is empty in dummy like reference
-                            _buildBarGroup(5, 18, true), // Sab is highlighted
-                            _buildBarGroup(6, 7, false),
-                          ],
+                          barGroups: List.generate(7, (index) {
+                            return _buildBarGroup(index, dailyRevenue[index], index == 6);
+                          }),
                         ),
                       ),
                     ),
@@ -359,30 +402,30 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               ),
               const SizedBox(height: 8),
 
-              // Dummy Activities (To match Design)
-              _buildActivityItem(
-                id: '#TRX-9821',
-                name: 'Siska Pratiwi',
-                desc: 'Cuci Kering Lipat - 3.5kg',
-                status: 'PROCESS',
-              ),
-              const SizedBox(height: 12),
-              _buildActivityItem(
-                id: '#TRX-9820',
-                name: 'Andi Wijaya',
-                desc: 'Cuci Setrika - 5.0kg',
-                status: 'READY',
-              ),
-              const SizedBox(height: 12),
-              _buildActivityItem(
-                id: '#TRX-9819',
-                name: 'Bu Rina',
-                desc: 'Bedcover King Size',
-                status: 'READY',
-                defaultIcon: Icons.inventory_2_outlined,
-                iconColor: const Color(0xFF3B82F6),
-                iconBgColor: const Color(0xFFDBEAFE),
-              ),
+              // Real Activities derived from state
+              if (recentTransactions.isEmpty)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20.0),
+                    child: Text('Belum ada transaksi.', style: TextStyle(color: Color(0xFF94A3B8))),
+                  ),
+                )
+              else
+                ...recentTransactions.map((trx) {
+                  final String serviceSummary = trx.items.isNotEmpty
+                      ? '${trx.items.first.service?.fullName ?? 'Layanan'} - ${trx.items.first.quantity} ${trx.items.first.service?.unitType ?? 'item'}${trx.items.length > 1 ? ' (+${trx.items.length - 1} lainnya)' : ''}'
+                      : 'Transaksi tanpa layanan';
+                  
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12.0),
+                    child: _buildActivityItem(
+                      id: trx.transactionCode,
+                      name: trx.customer?.name ?? 'Pelanggan',
+                      desc: serviceSummary,
+                      status: trx.status,
+                    ),
+                  );
+                }),
 
               const SizedBox(height: 80), // Padding for bottom nav
             ],

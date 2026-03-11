@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/authentication/presentation/controllers/auth_controller.dart';
 import '../../features/authentication/presentation/pages/login_page.dart';
+import '../../features/outlet/presentation/controllers/active_outlet_controller.dart';
+import '../../features/outlet/presentation/pages/outlet_selection_page.dart';
 import '../../features/outlet/presentation/pages/outlet_page.dart';
 import '../../features/services/presentation/pages/service_page.dart';
 import '../../features/customers/presentation/pages/customer_page.dart';
@@ -18,29 +20,43 @@ final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
 final goRouterProvider = Provider<GoRouter>((ref) {
   final authStateAsync = ref.watch(authStateProvider);
+  final activeOutletAsync = ref.watch(activeOutletProvider);
 
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: '/dashboard',
     redirect: (context, state) {
-      // Jika state autentikasi sedang dimuat, biarkan di halaman saat ini atau splash
+      // Jika state autentikasi sedang dimuat, biarkan
       if (authStateAsync.isLoading) return null;
 
       final isAuthenticated = authStateAsync.value?.session != null;
       final isGoingToLogin = state.matchedLocation == '/login';
+      final isGoingToSelectOutlet = state.matchedLocation == '/select-outlet';
 
       if (!isAuthenticated && !isGoingToLogin) {
         return '/login'; // Belum login, arahkan ke login
       }
 
-      if (isAuthenticated && isGoingToLogin) {
-        return '/dashboard'; // Sudah login tapi mencoba ke halaman login, arahkan ke dashboard
+      if (isAuthenticated) {
+        // Wait for outlet state to load before forcing redirects to avoid flickering
+        if (activeOutletAsync.isLoading) return null;
+
+        final hasSelectedOutlet = activeOutletAsync.value != null;
+
+        if (!hasSelectedOutlet && !isGoingToSelectOutlet) {
+           return '/select-outlet';
+        }
+
+        if (hasSelectedOutlet && (isGoingToLogin || isGoingToSelectOutlet)) {
+           return '/dashboard'; // Sudah pilih outlet, jangan biarkan balik ke login/select-outlet sembarangan
+        }
       }
 
-      return null; // Tidak perlu redirect
+      return null;
     },
     routes: [
       GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
+      GoRoute(path: '/select-outlet', builder: (context, state) => const OutletSelectionPage()),
       GoRoute(
         path: '/dashboard',
         pageBuilder: (context, state) =>

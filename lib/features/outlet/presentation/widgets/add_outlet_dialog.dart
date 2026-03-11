@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/outlet_entity.dart';
 import '../controllers/outlet_controller.dart';
+import '../../../authentication/presentation/controllers/auth_controller.dart';
 
 class AddOutletDialog extends ConsumerStatefulWidget {
   const AddOutletDialog({super.key});
@@ -27,6 +28,14 @@ class _AddOutletDialogState extends ConsumerState<AddOutletDialog> {
 
   void _submit() async {
     if (!_formKey.currentState!.validate()) return;
+
+    final userId = ref.read(supabaseClientProvider).auth.currentUser?.id;
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sesi telah berakhir, silakan login ulang.')),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
