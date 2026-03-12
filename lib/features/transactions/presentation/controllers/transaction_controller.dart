@@ -5,6 +5,7 @@ import '../../domain/repositories/transaction_repository.dart';
 import '../../data/datasources/transaction_remote_datasource.dart';
 import '../../data/repositories/transaction_repository_impl.dart';
 import '../../../authentication/presentation/controllers/auth_controller.dart';
+import '../../../customers/presentation/controllers/customer_controller.dart';
 
 final transactionRemoteDatasourceProvider =
     Provider<TransactionRemoteDatasource>((ref) {
@@ -50,13 +51,17 @@ class TransactionController extends AsyncNotifier<List<TransactionEntity>> {
 
   Future<bool> createTransaction(TransactionEntity transaction) async {
     final result = await _repository.createTransaction(transaction);
-    return result.fold((failure) {
-      print('Gagal buat transaksi dari repository: ${failure.message}');
-      return false;
-    }, (_) {
-      loadTransactions();
-      return true;
-    });
+    return result.fold(
+      (failure) {
+        print('Gagal buat transaksi dari repository: ${failure.message}');
+        return false;
+      },
+      (_) {
+        loadTransactions();
+        ref.read(customerControllerProvider.notifier).loadCustomers();
+        return true;
+      },
+    );
   }
 
   Future<bool> addPayment(String id, double amountPaid) async {
