@@ -81,11 +81,9 @@ class TransactionRemoteDatasourceImpl implements TransactionRemoteDatasource {
     // dengan skenario fallback sederhana jika belum ada RPC
 
     // 1. Insert header
-    final payload = transaction.toJson()..remove('created_at');
-
     final headerResponse = await supabaseClient
         .from('transactions')
-        .insert(payload)
+        .insert(transaction.toJson())
         .select()
         .single();
 
@@ -112,7 +110,7 @@ class TransactionRemoteDatasourceImpl implements TransactionRemoteDatasource {
   ) async {
     final Map<String, dynamic> updates = {'status': newStatus};
     final now = DateTime.now().toUtc().toIso8601String();
-    
+
     if (newStatus == 'PROCESS') {
       updates['processed_at'] = now;
     } else if (newStatus == 'READY') {
@@ -121,10 +119,7 @@ class TransactionRemoteDatasourceImpl implements TransactionRemoteDatasource {
       updates['completed_at'] = now;
     }
 
-    await supabaseClient
-        .from('transactions')
-        .update(updates)
-        .eq('id', id);
+    await supabaseClient.from('transactions').update(updates).eq('id', id);
 
     return getTransactionById(id);
   }

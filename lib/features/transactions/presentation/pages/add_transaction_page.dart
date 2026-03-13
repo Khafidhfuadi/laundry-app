@@ -6,6 +6,7 @@ import 'dart:math';
 
 import '../../domain/entities/transaction_entity.dart';
 import '../../../customers/domain/entities/customer_entity.dart';
+import '../../../services/domain/entities/service_entity.dart';
 import '../controllers/transaction_controller.dart';
 import '../../../customers/presentation/controllers/customer_controller.dart';
 import '../../../customers/presentation/widgets/add_customer_bottom_sheet.dart';
@@ -1040,37 +1041,28 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                                               color: Color(0xFFE8EEFF),
                                             ),
                                             ...filteredVariants.map((variant) {
-                                              final alreadyAdded = _items
+                                              final addedQty = _items
                                                   .where(
                                                     (item) =>
                                                         item.serviceVariantId ==
                                                         variant.id,
                                                   )
-                                                  .length;
+                                                  .fold<double>(
+                                                    0,
+                                                    (sum, item) =>
+                                                        sum + item.quantity,
+                                                  );
 
                                               return Material(
                                                 color: Colors.transparent,
                                                 child: InkWell(
-                                                  onTap: () {
-                                                    setState(() {
-                                                      _items.add(
-                                                        TransactionItemEntity(
-                                                          id: '',
-                                                          transactionId: '',
-                                                          serviceVariantId:
-                                                              variant.id,
-                                                          quantity: 1.0,
-                                                          subtotal:
-                                                              variant.price,
-                                                          serviceVariant:
-                                                              variant.copyWith(
-                                                                service:
-                                                                    service,
-                                                              ),
-                                                        ),
-                                                      );
-                                                    });
-                                                    setStateModal(() {});
+                                                  onTap: () async {
+                                                    await _handleAddVariantFromPicker(
+                                                      variant: variant,
+                                                      service: service,
+                                                      setStateModal:
+                                                          setStateModal,
+                                                    );
                                                   },
                                                   child: Padding(
                                                     padding:
@@ -1161,7 +1153,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                                                             ],
                                                           ),
                                                         ),
-                                                        if (alreadyAdded >
+                                                        if (addedQty >
                                                             0) ...[
                                                           Container(
                                                             padding:
@@ -1180,7 +1172,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                                                                   ),
                                                             ),
                                                             child: Text(
-                                                              '×$alreadyAdded',
+                                                              '×${_formatQuantity(addedQty)}',
                                                               style: const TextStyle(
                                                                 color: Color(
                                                                   0xFF16A34A,
@@ -1312,6 +1304,129 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
         ],
       ),
     );
+  }
+
+  Future<double?> _showAddQuantityDialog({
+    required String serviceName,
+    required String unitType,
+    required double initialQuantity,
+    required bool isEditMode,
+  }) async {
+    final controller = TextEditingController(text: _formatQuantity(initialQuantity));
+    return showDialog<double>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(isEditMode ? 'Ubah Kuantitas' : 'Masukkan Kuantitas'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              serviceName,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFF64748B),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextFormField(
+              controller: controller,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                hintText: 'Misal: 1.5',
+                suffixText: unitType,
+              ),
+              autofocus: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final qty = double.tryParse(
+                controller.text.trim().replaceAll(',', '.'),
+              );
+              if (qty != null && qty > 0) {
+                Navigator.pop(ctx, qty);
+              }
+            },
+            child: Text(isEditMode ? 'Simpan' : 'Tambah'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleAddVariantFromPicker({
+    required ServiceVariantEntity variant,
+    required ServiceEntity service,
+    required StateSetter setStateModal,
+  }) async {
+    final matchingIndices = <int>[];
+    for (var i = 0; i < _items.length; i++) {
+      if (_items[i].serviceVariantId == variant.id) {
+        matchingIndices.add(i);
+      }
+    }
+
+    final isEditMode = matchingIndices.isNotEmpty;
+    final initialQuantity = isEditMode
+        ? matchingIndices.fold<double>(0, (sum, idx) => sum + _items[idx].quantity)
+        : 1.0;
+
+    final qty = await _showAddQuantityDialog(
+      serviceName: '${service.name} - ${variant.variantName}',
+      unitType: variant.unitType,
+      initialQuantity: initialQuantity,
+      isEditMode: isEditMode,
+    );
+    if (qty == null || qty <= 0 || !mounted) return;
+
+    setState(() {
+      final recheckIndices = <int>[];
+      for (var i = 0; i < _items.length; i++) {
+        if (_items[i].serviceVariantId == variant.id) {
+          recheckIndices.add(i);
+        }
+      }
+
+      if (recheckIndices.isNotEmpty) {
+        final firstIndex = recheckIndices.first;
+        final firstItem = _items[firstIndex];
+        final servicePrice = firstItem.serviceVariant?.price ?? variant.price;
+
+        for (var i = recheckIndices.length - 1; i >= 1; i--) {
+          _items.removeAt(recheckIndices[i]);
+        }
+
+        _items[firstIndex] = TransactionItemEntity(
+          id: firstItem.id,
+          transactionId: firstItem.transactionId,
+          serviceVariantId: firstItem.serviceVariantId,
+          quantity: qty,
+          subtotal: qty * servicePrice,
+          serviceVariant:
+              firstItem.serviceVariant ?? variant.copyWith(service: service),
+        );
+      } else {
+        _items.add(
+          TransactionItemEntity(
+            id: '',
+            transactionId: '',
+            serviceVariantId: variant.id,
+            quantity: qty,
+            subtotal: qty * variant.price,
+            serviceVariant: variant.copyWith(service: service),
+          ),
+        );
+      }
+    });
+    setStateModal(() {});
   }
 
   void _updateItemQuantity(int index, double delta) {
