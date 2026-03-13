@@ -103,16 +103,16 @@ class TransactionEntity {
       perfumeId: json['perfume_id'] as String?,
       estimatedCompletionDate: DateTime.parse(
         json['estimated_completion_date'] as String,
-      ),
-      createdAt: DateTime.parse(json['created_at'] as String),
-      processedAt: json['processed_at'] != null 
-          ? DateTime.parse(json['processed_at'] as String) 
+      ).toLocal(),
+      createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
+      processedAt: json['processed_at'] != null
+          ? DateTime.parse(json['processed_at'] as String).toLocal()
           : null,
-      readyAt: json['ready_at'] != null 
-          ? DateTime.parse(json['ready_at'] as String) 
+      readyAt: json['ready_at'] != null
+          ? DateTime.parse(json['ready_at'] as String).toLocal()
           : null,
-      completedAt: json['completed_at'] != null 
-          ? DateTime.parse(json['completed_at'] as String) 
+      completedAt: json['completed_at'] != null
+          ? DateTime.parse(json['completed_at'] as String).toLocal()
           : null,
       customer: json['customers'] != null
           ? CustomerEntity.fromJson(json['customers'])
@@ -143,11 +143,15 @@ class TransactionEntity {
       'paid_amount': paidAmount,
       'notes': notes,
       if (perfumeId != null) 'perfume_id': perfumeId,
-      'estimated_completion_date': estimatedCompletionDate.toIso8601String(),
-      'created_at': createdAt.toIso8601String(),
-      if (processedAt != null) 'processed_at': processedAt!.toIso8601String(),
-      if (readyAt != null) 'ready_at': readyAt!.toIso8601String(),
-      if (completedAt != null) 'completed_at': completedAt!.toIso8601String(),
+      'estimated_completion_date': estimatedCompletionDate
+          .toUtc()
+          .toIso8601String(),
+      'created_at': createdAt.toUtc().toIso8601String(),
+      if (processedAt != null)
+        'processed_at': processedAt!.toUtc().toIso8601String(),
+      if (readyAt != null) 'ready_at': readyAt!.toUtc().toIso8601String(),
+      if (completedAt != null)
+        'completed_at': completedAt!.toUtc().toIso8601String(),
     };
   }
 }

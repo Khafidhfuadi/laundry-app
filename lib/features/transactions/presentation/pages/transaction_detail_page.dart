@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../domain/entities/transaction_entity.dart';
 import '../controllers/transaction_controller.dart';
+import '../../../../core/utils/whatsapp_helper.dart';
 
 class TransactionDetailPage extends ConsumerStatefulWidget {
   final String transactionId;
@@ -18,6 +19,7 @@ class TransactionDetailPage extends ConsumerStatefulWidget {
 
 class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
   bool _isUpdatingStatus = false;
+  bool _isSendingWhatsApp = false;
 
   final _formatter = NumberFormat.currency(
     locale: 'id_ID',
@@ -159,6 +161,68 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
           ),
         );
       }
+    }
+  }
+
+  String _formatQuantity(double quantity) {
+    final isWhole = quantity == quantity.roundToDouble();
+    if (isWhole) return quantity.toInt().toString();
+    return quantity
+        .toStringAsFixed(2)
+        .replaceAll(RegExp(r'0+$'), '')
+        .replaceAll(RegExp(r'\.$'), '');
+  }
+
+  Future<void> _sendWhatsApp(TransactionEntity trx) async {
+    if (_isSendingWhatsApp) return;
+
+    final customer = trx.customer;
+    if (customer == null || customer.phoneNumber.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Nomor WhatsApp pelanggan tidak tersedia'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isSendingWhatsApp = true);
+
+    final itemLines = trx.items.map((item) {
+      final serviceName = item.serviceVariant?.service?.name ?? 'Layanan';
+      final variantName = item.serviceVariant?.variantName ?? '';
+      final unitType = item.serviceVariant?.unitType ?? 'Kg';
+      final label = variantName.isEmpty
+          ? serviceName
+          : '$serviceName - $variantName';
+      return '$label (${_formatQuantity(item.quantity)} $unitType) = ${_formatter.format(item.subtotal)}';
+    }).toList();
+
+    final success = await WhatsAppHelper.sendTransactionSummary(
+      phoneNumber: customer.phoneNumber,
+      customerName: customer.name,
+      transactionCode: trx.transactionCode,
+      transactionDate: trx.createdAt,
+      estimatedCompletionDate: trx.estimatedCompletionDate,
+      itemLines: itemLines,
+      totalAmount: trx.totalPrice,
+      paidAmount: trx.paidAmount,
+      paymentStatus: trx.paymentStatus,
+      outletName: trx.outlet?.name ?? 'Laundry App',
+      notes: trx.notes,
+    );
+
+    if (!mounted) return;
+    setState(() => _isSendingWhatsApp = false);
+
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Gagal membuka WhatsApp'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -1141,17 +1205,17 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
               width: double.infinity,
               height: 48,
               child: OutlinedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Fitur kirim WhatsApp segera hadir'),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.chat_outlined, size: 18),
-                label: const Text(
-                  'KIRIM WHATSAPP',
-                  style: TextStyle(
+                onPressed: _isSendingWhatsApp ? null : () => _sendWhatsApp(trx),
+                icon: _isSendingWhatsApp
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.chat_outlined, size: 18),
+                label: Text(
+                  _isSendingWhatsApp ? 'MEMBUKA WHATSAPP...' : 'KIRIM WHATSAPP',
+                  style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.5,

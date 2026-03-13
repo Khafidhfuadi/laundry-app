@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'dart:math';
 
 import '../../domain/entities/transaction_entity.dart';
+import '../../../customers/domain/entities/customer_entity.dart';
 import '../controllers/transaction_controller.dart';
 import '../../../customers/presentation/controllers/customer_controller.dart';
 import '../../../customers/presentation/widgets/add_customer_bottom_sheet.dart';
@@ -12,6 +13,7 @@ import '../../../services/presentation/controllers/service_controller.dart';
 import '../../../outlet/presentation/controllers/outlet_controller.dart';
 import '../../../outlet/presentation/controllers/active_outlet_controller.dart';
 import '../../../perfumes/presentation/controllers/perfume_controller.dart';
+import '../../../../core/utils/whatsapp_helper.dart';
 
 class AddTransactionPage extends ConsumerStatefulWidget {
   const AddTransactionPage({super.key});
@@ -62,6 +64,15 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
 
   double get _totalPrice {
     return _items.fold(0.0, (sum, item) => sum + item.subtotal);
+  }
+
+  String _formatQuantity(double quantity) {
+    final isWhole = quantity == quantity.roundToDouble();
+    if (isWhole) return quantity.toInt().toString();
+    return quantity
+        .toStringAsFixed(2)
+        .replaceAll(RegExp(r'0+$'), '')
+        .replaceAll(RegExp(r'\.$'), '');
   }
 
   DateTime get _estimatedCompletionDate {
@@ -1210,7 +1221,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                                                   ),
                                                 ),
                                               );
-                                            }).toList(),
+                                            }),
                                           ],
                                         ],
                                       ),
@@ -1324,6 +1335,15 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
   void _submitEvent() async {
     final activeOutletState = ref.read(activeOutletProvider);
     final outletId = activeOutletState.value?.id;
+    final customerState = ref.read(customerControllerProvider);
+    final customers = customerState.asData?.value ?? const <CustomerEntity>[];
+    CustomerEntity? selectedCustomer;
+    for (final customer in customers) {
+      if (customer.id == _selectedCustomerId) {
+        selectedCustomer = customer;
+        break;
+      }
+    }
 
     if (!_formKey.currentState!.validate() ||
         _items.isEmpty ||
@@ -1389,9 +1409,49 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
     if (mounted) {
       setState(() => _isLoading = false);
       if (success) {
+        bool waOpened = false;
+        if (selectedCustomer != null &&
+            selectedCustomer.phoneNumber.trim().isNotEmpty) {
+          final formatter = NumberFormat.currency(
+            locale: 'id_ID',
+            symbol: 'Rp',
+            decimalDigits: 0,
+          );
+          final itemLines = _items.map((item) {
+            final serviceName = item.serviceVariant?.service?.name ?? 'Layanan';
+            final variantName = item.serviceVariant?.variantName ?? '';
+            final unitType = item.serviceVariant?.unitType ?? 'Kg';
+            final label = variantName.isEmpty
+                ? serviceName
+                : '$serviceName - $variantName';
+            return '$label (${_formatQuantity(item.quantity)} $unitType) = ${formatter.format(item.subtotal)}';
+          }).toList();
+
+          waOpened = await WhatsAppHelper.sendTransactionSummary(
+            phoneNumber: selectedCustomer.phoneNumber,
+            customerName: selectedCustomer.name,
+            transactionCode: generatedCode,
+            transactionDate: newTransaction.createdAt,
+            estimatedCompletionDate: newTransaction.estimatedCompletionDate,
+            itemLines: itemLines,
+            totalAmount: newTransaction.totalPrice,
+            paidAmount: newTransaction.paidAmount,
+            paymentStatus: newTransaction.paymentStatus,
+            outletName: activeOutletState.value?.name ?? 'Laundry App',
+            notes: newTransaction.notes,
+          );
+        }
+
+        if (!mounted) return;
         context.pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Berhasil membuat transaksi baru.')),
+          SnackBar(
+            content: Text(
+              waOpened
+                  ? 'Transaksi berhasil dibuat, WhatsApp pelanggan sudah dibuka.'
+                  : 'Berhasil membuat transaksi baru.',
+            ),
+          ),
         );
       } else {
         print('Gagal membuat transaksi ${newTransaction.toJson()}');

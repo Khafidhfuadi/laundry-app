@@ -52,7 +52,7 @@ class LaundryApp extends ConsumerWidget {
           Theme.of(context).primaryTextTheme,
         ),
       ),
-      themeMode: ThemeMode.system, // Mendukung dark mode
+      themeMode: ThemeMode.light,
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,

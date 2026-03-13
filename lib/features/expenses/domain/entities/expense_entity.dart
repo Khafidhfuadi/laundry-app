@@ -24,7 +24,7 @@ class ExpenseEntity {
       expenseName: json['expense_name'] as String,
       category: json['category'] as String? ?? 'Operasional',
       amount: (json['amount'] as num).toDouble(),
-      expenseDate: DateTime.parse(json['expense_date'] as String),
+      expenseDate: DateTime.parse(json['expense_date'] as String).toLocal(),
       notes: json['notes'] ?? '',
     );
   }
@@ -36,7 +36,7 @@ class ExpenseEntity {
       'expense_name': expenseName,
       'category': category,
       'amount': amount,
-      'expense_date': expenseDate.toIso8601String(),
+      'expense_date': expenseDate.toUtc().toIso8601String(),
       'notes': notes,
     };
   }

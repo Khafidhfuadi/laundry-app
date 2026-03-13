@@ -299,7 +299,10 @@ class _CustomerPageState extends ConsumerState<CustomerPage> {
 
   Widget _buildCustomerCard(BuildContext context, CustomerEntity customer) {
     final lastTx = customer.lastTransactionDate != null
-        ? DateFormat('dd MMM yyyy').format(customer.lastTransactionDate!)
+        ? DateFormat(
+            'dd MMM yyyy, HH:mm',
+            'id_ID',
+          ).format(customer.lastTransactionDate!.toLocal())
         : 'Belum pernah';
 
     final initials = customer.name.isNotEmpty

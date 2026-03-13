@@ -341,7 +341,7 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Masuk: ${DateFormat('dd MMM yyyy').format(trx.createdAt.toLocal())}',
+                        'Masuk: ${DateFormat('dd MMM yyyy, HH:mm', 'id_ID').format(trx.createdAt.toLocal())}',
                         style: const TextStyle(
                           fontSize: 13,
                           color: Color(0xFF64748B),

@@ -22,7 +22,7 @@ class OutletEntity {
       address: json['address'] as String? ?? '',
       phone: json['phone'] as String? ?? '',
       isActive: json['is_active'] as bool? ?? true,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
     );
   }
 

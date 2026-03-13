@@ -81,9 +81,11 @@ class TransactionRemoteDatasourceImpl implements TransactionRemoteDatasource {
     // dengan skenario fallback sederhana jika belum ada RPC
 
     // 1. Insert header
+    final payload = transaction.toJson()..remove('created_at');
+
     final headerResponse = await supabaseClient
         .from('transactions')
-        .insert(transaction.toJson())
+        .insert(payload)
         .select()
         .single();
 

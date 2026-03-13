@@ -28,9 +28,9 @@ class CustomerEntity {
       notes: json['notes'] ?? '',
       totalTransactions: json['total_transactions'] as int? ?? 0,
       lastTransactionDate: json['last_transaction_date'] != null
-          ? DateTime.parse(json['last_transaction_date'] as String)
+          ? DateTime.parse(json['last_transaction_date'] as String).toLocal()
           : null,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
     );
   }
 
@@ -43,7 +43,9 @@ class CustomerEntity {
       'notes': notes,
       'total_transactions': totalTransactions,
       if (lastTransactionDate != null)
-        'last_transaction_date': lastTransactionDate!.toIso8601String(),
+        'last_transaction_date': lastTransactionDate!
+            .toUtc()
+            .toIso8601String(),
     };
   }
 }

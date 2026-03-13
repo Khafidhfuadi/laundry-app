@@ -119,7 +119,7 @@ class _ExpensePageState extends ConsumerState<ExpensePage> {
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           subtitle: Text(
-                            '${expense.category} • ${DateFormat('dd MMM yyyy').format(expense.expenseDate)}',
+                            '${expense.category} • ${DateFormat('dd MMM yyyy, HH:mm', 'id_ID').format(expense.expenseDate.toLocal())}',
                           ),
                           trailing: Text(
                             formatter.format(expense.amount),
