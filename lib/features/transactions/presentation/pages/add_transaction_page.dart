@@ -24,6 +24,9 @@ class AddTransactionPage extends ConsumerStatefulWidget {
 }
 
 class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
+  static const double _sectionHorizontalPadding = 20;
+  static const double _sectionSpacing = 16;
+
   final _formKey = GlobalKey<FormState>();
   String? _selectedCustomerId;
   String? _selectedPerfumeId;
@@ -34,7 +37,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
 
   // Tagihan
   String _paymentStatus = 'UNPAID';
-  final _paidAmountController = TextEditingController(text: '0');
+  final _paidAmountController = TextEditingController();
 
   // Catatan
   final _notesController = TextEditingController();
@@ -1153,8 +1156,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                                                             ],
                                                           ),
                                                         ),
-                                                        if (addedQty >
-                                                            0) ...[
+                                                        if (addedQty > 0) ...[
                                                           Container(
                                                             padding:
                                                                 const EdgeInsets.symmetric(
@@ -1309,10 +1311,12 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
   Future<double?> _showAddQuantityDialog({
     required String serviceName,
     required String unitType,
-    required double initialQuantity,
+    required double? initialQuantity,
     required bool isEditMode,
   }) async {
-    final controller = TextEditingController(text: _formatQuantity(initialQuantity));
+    final controller = TextEditingController(
+      text: initialQuantity == null ? '' : _formatQuantity(initialQuantity),
+    );
     return showDialog<double>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1332,7 +1336,9 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
             const SizedBox(height: 10),
             TextFormField(
               controller: controller,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: InputDecoration(
                 hintText: 'Misal: 1.5',
                 suffixText: unitType,
@@ -1376,8 +1382,11 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
 
     final isEditMode = matchingIndices.isNotEmpty;
     final initialQuantity = isEditMode
-        ? matchingIndices.fold<double>(0, (sum, idx) => sum + _items[idx].quantity)
-        : 1.0;
+        ? matchingIndices.fold<double>(
+            0,
+            (sum, idx) => sum + _items[idx].quantity,
+          )
+        : null;
 
     final qty = await _showAddQuantityDialog(
       serviceName: '${service.name} - ${variant.variantName}',
@@ -1487,7 +1496,22 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
       actualPaymentStatus = 'PAID';
     } else if (_paymentStatus == 'PARTIAL') {
       // DP / Sebagian: ambil dari input
-      paidAmount = double.tryParse(_paidAmountController.text) ?? 0.0;
+      paidAmount =
+          double.tryParse(
+            _paidAmountController.text.trim().replaceAll(',', '.'),
+          ) ??
+          0.0;
+      if (paidAmount > _totalPrice) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('DP tidak boleh lebih dari total tagihan'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
       if (paidAmount >= _totalPrice && _totalPrice > 0) {
         actualPaymentStatus = 'PAID';
       } else if (paidAmount > 0) {
@@ -1582,6 +1606,8 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
 
   @override
   Widget build(BuildContext context) {
+    final keyboardInset = MediaQuery.of(context).viewInsets.bottom;
+    final safeBottom = MediaQuery.of(context).padding.bottom;
     final formatter = NumberFormat.currency(
       locale: 'id_ID',
       symbol: 'Rp',
@@ -1620,53 +1646,63 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const SizedBox(height: 20),
               _buildCustomerSection(),
+              const SizedBox(height: _sectionSpacing),
               _buildServiceListSection(formatter),
+              const SizedBox(height: _sectionSpacing),
               _buildPerfumeSection(),
+              const SizedBox(height: _sectionSpacing),
               _buildSummarySection(formatter),
+              const SizedBox(height: _sectionSpacing),
               _buildNotesSection(),
-              const SizedBox(height: 100), // Spacing for bottom button
+              SizedBox(height: keyboardInset > 0 ? 24 : (100 + safeBottom)),
             ],
           ),
         ),
       ),
-      bottomSheet: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -5),
-            ),
-          ],
-        ),
-        child: FilledButton.icon(
-          onPressed: _isLoading ? null : _submitEvent,
-          icon: _isLoading
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
+      bottomSheet: keyboardInset > 0
+          ? null
+          : Container(
+              padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + safeBottom),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, -5),
                   ),
-                )
-              : const Icon(Icons.save),
-          label: Text(
-            _isLoading ? 'Menyimpan...' : 'Simpan',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          style: FilledButton.styleFrom(
-            backgroundColor: const Color(0xFF0F62FE),
-            minimumSize: const Size.fromHeight(54),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+                ],
+              ),
+              child: FilledButton.icon(
+                onPressed: _isLoading ? null : _submitEvent,
+                icon: _isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Icon(Icons.save),
+                label: Text(
+                  _isLoading ? 'Menyimpan...' : 'Simpan',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF0F62FE),
+                  minimumSize: const Size.fromHeight(54),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
             ),
-          ),
-        ),
-      ),
     );
   }
 
@@ -1695,7 +1731,9 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
     ];
 
     return Padding(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(
+        horizontal: _sectionHorizontalPadding,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1957,53 +1995,35 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                       ),
                       const SizedBox(height: 12),
                       const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                      // List
+                      // Options (pill style)
                       Expanded(
-                        child: ListView(
+                        child: SingleChildScrollView(
                           controller: scrollController,
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                          children: [
-                            // "No perfume" option
-                            _buildPerfumeOption(
-                              ctx: ctx,
-                              id: null,
-                              label: 'Default / Tanpa Parfum',
-                              subtitle: 'Tidak menggunakan parfum tambahan',
-                              icon: Icons.do_not_disturb_alt_rounded,
-                              iconBg: const Color(0xFFF1F5F9),
-                              iconColor: const Color(0xFF94A3B8),
-                              isSelected: _selectedPerfumeId == null,
-                            ),
-                            const SizedBox(height: 8),
-                            if (filtered.isEmpty)
-                              const Padding(
-                                padding: EdgeInsets.all(24),
-                                child: Center(
-                                  child: Text(
-                                    'Parfum tidak ditemukan',
-                                    style: TextStyle(color: Color(0xFF94A3B8)),
-                                  ),
-                                ),
-                              )
-                            else
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                          child: Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
+                            children: [
                               ...filtered.map(
-                                (p) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 8),
-                                  child: _buildPerfumeOption(
-                                    ctx: ctx,
-                                    id: p.id,
-                                    label: p.name,
-                                    subtitle: 'Parfum pilihan',
-                                    icon: Icons.water_drop_rounded,
-                                    iconBg: const Color(0xFFFDF4FF),
-                                    iconColor: const Color(0xFF9333EA),
-                                    isSelected: _selectedPerfumeId == p.id,
-                                  ),
+                                (p) => _buildPerfumeOptionPill(
+                                  ctx: ctx,
+                                  id: p.id,
+                                  label: p.name,
+                                  isSelected: _selectedPerfumeId == p.id,
                                 ),
                               ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
+                      if (filtered.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.only(bottom: 24),
+                          child: Text(
+                            'Parfum tidak ditemukan',
+                            style: TextStyle(color: Color(0xFF94A3B8)),
+                          ),
+                        ),
                     ],
                   ),
                 );
@@ -2015,112 +2035,58 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
     );
   }
 
-  Widget _buildPerfumeOption({
+  Widget _buildPerfumeOptionPill({
     required BuildContext ctx,
     required String? id,
     required String label,
-    required String subtitle,
-    required IconData icon,
-    required Color iconBg,
-    required Color iconColor,
     required bool isSelected,
   }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: () {
-          setState(() => _selectedPerfumeId = id);
-          Navigator.pop(ctx);
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
+    return ChoiceChip(
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            id == null
+                ? Icons.do_not_disturb_alt_rounded
+                : Icons.water_drop_rounded,
+            size: 16,
             color: isSelected
-                ? const Color(0xFFF5F0FF)
-                : const Color(0xFFFAFBFF),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isSelected
-                  ? const Color(0xFF9333EA)
-                  : const Color(0xFFE8EEFF),
-              width: isSelected ? 1.5 : 1,
-            ),
+                ? const Color(0xFF7C3AED)
+                : const Color(0xFF64748B),
           ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: iconBg,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: iconColor, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: isSelected
-                            ? const Color(0xFF7C3AED)
-                            : const Color(0xFF1E293B),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF94A3B8),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (isSelected)
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF9333EA),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.check_rounded,
-                    color: Colors.white,
-                    size: 14,
-                  ),
-                ),
-            ],
-          ),
-        ),
+          const SizedBox(width: 6),
+          Text(label),
+        ],
       ),
+      selected: isSelected,
+      onSelected: (_) {
+        setState(() => _selectedPerfumeId = id);
+        Navigator.pop(ctx);
+      },
+      labelStyle: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: isSelected ? const Color(0xFF7C3AED) : const Color(0xFF334155),
+      ),
+      selectedColor: const Color(0xFFF5F0FF),
+      backgroundColor: const Color(0xFFF8FAFC),
+      side: BorderSide(
+        color: isSelected ? const Color(0xFF9333EA) : const Color(0xFFE2E8F0),
+        width: isSelected ? 1.4 : 1,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+      showCheckmark: false,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
     );
   }
 
   Widget _buildPerfumeSection() {
     final perfumeState = ref.watch(perfumeControllerProvider);
 
-    final selectedName = perfumeState.maybeWhen(
-      data: (perfumes) {
-        if (_selectedPerfumeId == null) return null;
-        try {
-          return perfumes.firstWhere((p) => p.id == _selectedPerfumeId).name;
-        } catch (_) {
-          return null;
-        }
-      },
-      orElse: () => null,
-    );
-
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: _sectionHorizontalPadding,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2134,72 +2100,41 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
           ),
           const SizedBox(height: 8),
           perfumeState.when(
-            data: (perfumes) => GestureDetector(
-              onTap: () => _showPerfumeModal(perfumes),
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: _selectedPerfumeId != null
-                        ? const Color(0xFF9333EA)
-                        : const Color(0xFFE2E8F0),
-                    width: _selectedPerfumeId != null ? 1.5 : 1,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: _selectedPerfumeId != null
-                            ? const Color(0xFFFDF4FF)
-                            : const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(10),
+            data: (perfumes) => Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  ...perfumes.map(
+                    (p) => ChoiceChip(
+                      label: Text(p.name),
+                      selected: _selectedPerfumeId == p.id,
+                      onSelected: (_) =>
+                          setState(() => _selectedPerfumeId = p.id),
+                      selectedColor: const Color(0xFFF5F0FF),
+                      backgroundColor: const Color(0xFFF8FAFC),
+                      labelStyle: TextStyle(
+                        color: _selectedPerfumeId == p.id
+                            ? const Color(0xFF7C3AED)
+                            : const Color(0xFF334155),
+                        fontWeight: FontWeight.w600,
                       ),
-                      child: Icon(
-                        Icons.water_drop_rounded,
-                        color: _selectedPerfumeId != null
+                      side: BorderSide(
+                        color: _selectedPerfumeId == p.id
                             ? const Color(0xFF9333EA)
-                            : const Color(0xFF94A3B8),
-                        size: 18,
+                            : const Color(0xFFE2E8F0),
                       ),
+                      showCheckmark: false,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        selectedName ?? 'Default / Tanpa Parfum',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: _selectedPerfumeId != null
-                              ? FontWeight.w600
-                              : FontWeight.normal,
-                          color: _selectedPerfumeId != null
-                              ? const Color(0xFF7C3AED)
-                              : const Color(0xFF94A3B8),
-                        ),
-                      ),
-                    ),
-                    if (_selectedPerfumeId != null)
-                      GestureDetector(
-                        onTap: () => setState(() => _selectedPerfumeId = null),
-                        child: const Padding(
-                          padding: EdgeInsets.only(right: 4),
-                          child: Icon(
-                            Icons.close_rounded,
-                            color: Color(0xFF94A3B8),
-                            size: 18,
-                          ),
-                        ),
-                      )
-                    else
-                      const Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        color: Color(0xFF94A3B8),
-                      ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
             loading: () => Container(
@@ -2253,7 +2188,9 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
 
   Widget _buildServiceListSection(NumberFormat formatter) {
     return Padding(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(
+        horizontal: _sectionHorizontalPadding,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2457,7 +2394,9 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
 
   Widget _buildSummarySection(NumberFormat formatter) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(
+        horizontal: _sectionHorizontalPadding,
+      ),
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
@@ -2589,7 +2528,12 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                           child: Text('Lunas Langsung'),
                         ),
                       ],
-                      onChanged: (v) => setState(() => _paymentStatus = v!),
+                      onChanged: (v) => setState(() {
+                        _paymentStatus = v!;
+                        if (_paymentStatus != 'PARTIAL') {
+                          _paidAmountController.clear();
+                        }
+                      }),
                     ),
                   ),
                 ),
@@ -2599,16 +2543,29 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _paidAmountController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Jumlah Diterima (Rp)',
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(
+                  hintText: 'Contoh: 5000',
+                  border: const OutlineInputBorder(),
+                  contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 8,
                   ),
+                  errorText: () {
+                    final raw = _paidAmountController.text.trim();
+                    if (raw.isEmpty) return null;
+                    final value = double.tryParse(raw.replaceAll(',', '.'));
+                    if (value == null) return 'Masukkan angka yang valid';
+                    if (value > _totalPrice) {
+                      return 'DP tidak boleh lebih dari total tagihan';
+                    }
+                    if (value < 0) return 'DP tidak boleh negatif';
+                    return null;
+                  }(),
                 ),
                 keyboardType: TextInputType.number,
                 style: const TextStyle(fontWeight: FontWeight.bold),
+                onChanged: (_) => setState(() {}),
               ),
             ],
             const Padding(
@@ -2643,7 +2600,9 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
 
   Widget _buildNotesSection() {
     return Padding(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(
+        horizontal: _sectionHorizontalPadding,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

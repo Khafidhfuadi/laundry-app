@@ -250,96 +250,96 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               const SizedBox(height: 24),
 
               // 4. Chart Section
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.02),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Pendapatan 7 Hari Terakhir',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1E293B),
-                          ),
-                        ),
-                        const Icon(Icons.more_horiz, color: Color(0xFF94A3B8)),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      height: 180,
-                      child: BarChart(
-                        BarChartData(
-                          alignment: BarChartAlignment.spaceAround,
-                          maxY: maxY,
-                          barTouchData: BarTouchData(enabled: false),
-                          titlesData: FlTitlesData(
-                            show: true,
-                            bottomTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                getTitlesWidget: (value, meta) {
-                                  final isToday = value.toInt() == 6;
-                                  return Padding(
-                                    padding: const EdgeInsets.only(top: 8.0),
-                                    child: Text(
-                                      last7DaysLabels[value.toInt()],
-                                      style: TextStyle(
-                                        color: isToday
-                                            ? const Color(0xFF0F62FE)
-                                            : const Color(0xFF94A3B8),
-                                        fontWeight: isToday
-                                            ? FontWeight.bold
-                                            : FontWeight.normal,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  );
-                                },
-                                reservedSize: 28,
-                              ),
-                            ),
-                            leftTitles: const AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                            topTitles: const AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                            rightTitles: const AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                          ),
-                          gridData: const FlGridData(show: false),
-                          borderData: FlBorderData(show: false),
-                          barGroups: List.generate(7, (index) {
-                            return _buildBarGroup(
-                              index,
-                              dailyRevenue[index],
-                              index == 6,
-                            );
-                          }),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
+              // Container(
+              //   padding: const EdgeInsets.all(20),
+              //   decoration: BoxDecoration(
+              //     color: Colors.white,
+              //     borderRadius: BorderRadius.circular(20),
+              //     boxShadow: [
+              //       BoxShadow(
+              //         color: Colors.black.withOpacity(0.02),
+              //         blurRadius: 10,
+              //         offset: const Offset(0, 4),
+              //       ),
+              //     ],
+              //   ),
+              //   child: Column(
+              //     crossAxisAlignment: CrossAxisAlignment.start,
+              //     children: [
+              //       Row(
+              //         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              //         children: [
+              //           const Text(
+              //             'Pendapatan 7 Hari Terakhir',
+              //             style: TextStyle(
+              //               fontSize: 16,
+              //               fontWeight: FontWeight.bold,
+              //               color: Color(0xFF1E293B),
+              //             ),
+              //           ),
+              //           const Icon(Icons.more_horiz, color: Color(0xFF94A3B8)),
+              //         ],
+              //       ),
+              //       const SizedBox(height: 24),
+              //       SizedBox(
+              //         height: 180,
+              //         child: BarChart(
+              //           BarChartData(
+              //             alignment: BarChartAlignment.spaceAround,
+              //             maxY: maxY,
+              //             barTouchData: BarTouchData(enabled: false),
+              //             titlesData: FlTitlesData(
+              //               show: true,
+              //               bottomTitles: AxisTitles(
+              //                 sideTitles: SideTitles(
+              //                   showTitles: true,
+              //                   getTitlesWidget: (value, meta) {
+              //                     final isToday = value.toInt() == 6;
+              //                     return Padding(
+              //                       padding: const EdgeInsets.only(top: 8.0),
+              //                       child: Text(
+              //                         last7DaysLabels[value.toInt()],
+              //                         style: TextStyle(
+              //                           color: isToday
+              //                               ? const Color(0xFF0F62FE)
+              //                               : const Color(0xFF94A3B8),
+              //                           fontWeight: isToday
+              //                               ? FontWeight.bold
+              //                               : FontWeight.normal,
+              //                           fontSize: 12,
+              //                         ),
+              //                       ),
+              //                     );
+              //                   },
+              //                   reservedSize: 28,
+              //                 ),
+              //               ),
+              //               leftTitles: const AxisTitles(
+              //                 sideTitles: SideTitles(showTitles: false),
+              //               ),
+              //               topTitles: const AxisTitles(
+              //                 sideTitles: SideTitles(showTitles: false),
+              //               ),
+              //               rightTitles: const AxisTitles(
+              //                 sideTitles: SideTitles(showTitles: false),
+              //               ),
+              //             ),
+              //             gridData: const FlGridData(show: false),
+              //             borderData: FlBorderData(show: false),
+              //             barGroups: List.generate(7, (index) {
+              //               return _buildBarGroup(
+              //                 index,
+              //                 dailyRevenue[index],
+              //                 index == 6,
+              //               );
+              //             }),
+              //           ),
+              //         ),
+              //       ),
+              //     ],
+              //   ),
+              // ),
+              // const SizedBox(height: 24),
 
               // 5. Quick Actions
               const Text(
@@ -361,14 +361,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 children: [
                   _buildQuickActionBtn(
                     context,
-                    'Transaksi Baru',
-                    Icons.add,
-                    const Color(0xFF0F62FE),
-                    () => context.push('/transactions/add'),
-                  ),
-                  _buildQuickActionBtn(
-                    context,
-                    'Kelola Layanan',
+                    'Layanan',
                     Icons.layers_outlined,
                     const Color(0xFFE0E7FF),
                     () => context.push('/services'),
@@ -376,7 +369,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   ),
                   _buildQuickActionBtn(
                     context,
-                    'Data Pelanggan',
+                    'Pelanggan',
                     Icons.people,
                     const Color(0xFFE0E7FF),
                     () => context.push('/customers'),
@@ -384,10 +377,18 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   ),
                   _buildQuickActionBtn(
                     context,
-                    'Laporan',
-                    Icons.bar_chart,
+                    'Parfum',
+                    Icons.local_florist_outlined,
                     const Color(0xFFE0E7FF),
-                    () {},
+                    () => context.push('/perfumes'),
+                    iconColor: const Color(0xFF0F62FE),
+                  ),
+                  _buildQuickActionBtn(
+                    context,
+                    'Tambah Pengeluaran',
+                    Icons.wallet_outlined,
+                    const Color(0xFFE0E7FF),
+                    () => context.push('/expenses'),
                     iconColor: const Color(0xFF0F62FE),
                   ),
                 ],
@@ -395,61 +396,61 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               const SizedBox(height: 24),
 
               // 6. Recent Activities
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Aktivitas Terkini',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1E293B),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () => context.push('/transactions'),
-                    child: const Text(
-                      'LIHAT SEMUA',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F62FE),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
+              // Row(
+              //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              //   children: [
+              //     const Text(
+              //       'Aktivitas Terkini',
+              //       style: TextStyle(
+              //         fontSize: 16,
+              //         fontWeight: FontWeight.bold,
+              //         color: Color(0xFF1E293B),
+              //       ),
+              //     ),
+              //     TextButton(
+              //       onPressed: () => context.push('/transactions'),
+              //       child: const Text(
+              //         'LIHAT SEMUA',
+              //         style: TextStyle(
+              //           fontSize: 12,
+              //           fontWeight: FontWeight.bold,
+              //           color: Color(0xFF0F62FE),
+              //         ),
+              //       ),
+              //     ),
+              //   ],
+              // ),
+              // const SizedBox(height: 8),
 
               // Real Activities derived from state
-              if (recentTransactions.isEmpty)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(20.0),
-                    child: Text(
-                      'Belum ada transaksi.',
-                      style: TextStyle(color: Color(0xFF94A3B8)),
-                    ),
-                  ),
-                )
-              else
-                ...recentTransactions.map((trx) {
-                  final String serviceSummary = trx.items.isNotEmpty
-                      ? '${trx.items.first.serviceVariant?.service?.name ?? 'Layanan'} - ${trx.items.first.quantity} ${trx.items.first.serviceVariant?.unitType ?? 'item'}${trx.items.length > 1 ? ' (+${trx.items.length - 1} lainnya)' : ''}'
-                      : 'Transaksi tanpa layanan';
+              // if (recentTransactions.isEmpty)
+              //   const Center(
+              //     child: Padding(
+              //       padding: EdgeInsets.all(20.0),
+              //       child: Text(
+              //         'Belum ada transaksi.',
+              //         style: TextStyle(color: Color(0xFF94A3B8)),
+              //       ),
+              //     ),
+              //   )
+              // else
+              //   ...recentTransactions.map((trx) {
+              //     final String serviceSummary = trx.items.isNotEmpty
+              //         ? '${trx.items.first.serviceVariant?.service?.name ?? 'Layanan'} - ${trx.items.first.quantity} ${trx.items.first.serviceVariant?.unitType ?? 'item'}${trx.items.length > 1 ? ' (+${trx.items.length - 1} lainnya)' : ''}'
+              //         : 'Transaksi tanpa layanan';
 
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12.0),
-                    child: _buildActivityItem(
-                      id: trx.transactionCode,
-                      name: trx.customer?.name ?? 'Pelanggan',
-                      desc: serviceSummary,
-                      status: trx.status,
-                    ),
-                  );
-                }),
+              //     return Padding(
+              //       padding: const EdgeInsets.only(bottom: 12.0),
+              //       child: _buildActivityItem(
+              //         id: trx.transactionCode,
+              //         name: trx.customer?.name ?? 'Pelanggan',
+              //         desc: serviceSummary,
+              //         status: trx.status,
+              //       ),
+              //     );
+              //   }),
 
-              const SizedBox(height: 80), // Padding for bottom nav
+              // const SizedBox(height: 80), // Padding for bottom nav
             ],
           ),
         ),

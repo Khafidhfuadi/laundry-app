@@ -15,6 +15,10 @@ class ReportSummary {
   final double totalExpense;
   final double netProfit;
   final int totalTransactions;
+  final double incomeChangePercent;
+  final double expenseChangePercent;
+  final double netProfitChangePercent;
+  final double transactionChangePercent;
 
   // Indeks 0 = hari paling lama, indeks terakhir = hari ini
   final List<double> dailyIncome;
@@ -31,6 +35,10 @@ class ReportSummary {
     required this.totalExpense,
     required this.netProfit,
     required this.totalTransactions,
+    required this.incomeChangePercent,
+    required this.expenseChangePercent,
+    required this.netProfitChangePercent,
+    required this.transactionChangePercent,
     required this.dailyIncome,
     required this.dailyExpense,
     required this.topServices,
@@ -45,6 +53,10 @@ class ReportSummary {
       totalExpense: 0,
       netProfit: 0,
       totalTransactions: 0,
+      incomeChangePercent: 0,
+      expenseChangePercent: 0,
+      netProfitChangePercent: 0,
+      transactionChangePercent: 0,
       dailyIncome: List.filled(30, 0.0),
       dailyExpense: List.filled(30, 0.0),
       topServices: [],

@@ -9,6 +9,7 @@ import '../../features/outlet/presentation/pages/outlet_selection_page.dart';
 import '../../features/outlet/presentation/pages/outlet_page.dart';
 import '../../features/services/presentation/pages/service_page.dart';
 import '../../features/customers/presentation/pages/customer_page.dart';
+import '../../features/perfumes/presentation/pages/perfume_page.dart';
 import '../../features/transactions/presentation/pages/transaction_page.dart';
 import '../../features/transactions/presentation/pages/add_transaction_page.dart';
 import '../../features/transactions/presentation/pages/transaction_detail_page.dart';
@@ -45,11 +46,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         final hasSelectedOutlet = activeOutletAsync.value != null;
 
         if (!hasSelectedOutlet && !isGoingToSelectOutlet) {
-           return '/select-outlet';
+          return '/select-outlet';
         }
 
         if (hasSelectedOutlet && (isGoingToLogin || isGoingToSelectOutlet)) {
-           return '/dashboard'; // Sudah pilih outlet, jangan biarkan balik ke login/select-outlet sembarangan
+          return '/dashboard'; // Sudah pilih outlet, jangan biarkan balik ke login/select-outlet sembarangan
         }
       }
 
@@ -57,7 +58,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
-      GoRoute(path: '/select-outlet', builder: (context, state) => const OutletSelectionPage()),
+      GoRoute(
+        path: '/select-outlet',
+        builder: (context, state) => const OutletSelectionPage(),
+      ),
       GoRoute(
         path: '/dashboard',
         pageBuilder: (context, state) =>
@@ -74,6 +78,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/customers',
         builder: (context, state) => const CustomerPage(),
+      ),
+      GoRoute(
+        path: '/perfumes',
+        builder: (context, state) => const PerfumePage(),
       ),
       GoRoute(
         path: '/transactions',
