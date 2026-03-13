@@ -6,6 +6,8 @@ abstract class TransactionRepository {
   Future<Either<Failure, List<TransactionEntity>>> getTransactions({
     String? status,
     String? outletId,
+    DateTime? startDate,
+    DateTime? endDate,
   });
   Future<Either<Failure, TransactionEntity>> getTransactionById(String id);
   Future<Either<Failure, TransactionEntity>> createTransaction(

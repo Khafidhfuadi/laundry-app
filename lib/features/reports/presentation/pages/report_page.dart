@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/presentation/widgets/custom_bottom_nav.dart';
 import '../../../outlet/presentation/controllers/active_outlet_controller.dart';
@@ -95,6 +96,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                   _buildAppBar(),
                   _buildFilterChips(),
                   _buildSummaryGrid(summary),
+                  _buildDetailReportsListSection(context),
                   _buildBarChartSection(summary),
                   _buildTopServicesSection(summary),
                   _buildCustomerStatsSection(summary),
@@ -357,6 +359,119 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Detail Report List
+  // -------------------------------------------------------------------------
+  Widget _buildDetailReportsListSection(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Detail Laporan',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1E293B),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildDetailReportTile(
+            icon: Icons.trending_up,
+            title: 'Laporan Pemasukan',
+            subtitle: 'Grafik dan log pemasukan',
+            iconColor: const Color(0xFF0F62FE),
+            iconBgColor: const Color(0xFFDBEAFE),
+            onTap: () => context.push('/reports/income'),
+          ),
+          _buildDetailReportTile(
+            icon: Icons.trending_down,
+            title: 'Laporan Pengeluaran',
+            subtitle: 'Grafik dan log pengeluaran',
+            iconColor: const Color(0xFFEF4444),
+            iconBgColor: const Color(0xFFFEE2E2),
+            onTap: () => context.push('/reports/expense'),
+          ),
+          _buildDetailReportTile(
+            icon: Icons.show_chart,
+            title: 'Laporan Laba Bersih',
+            subtitle: 'Grafik dan log laba bersih',
+            iconColor: const Color(0xFF10B981),
+            iconBgColor: const Color(0xFFD1FAE5),
+            onTap: () => context.push('/reports/net-profit'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailReportTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color iconColor,
+    required Color iconBgColor,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: iconBgColor,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: iconColor, size: 18),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1E293B),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 14,
+                  color: Color(0xFF94A3B8),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

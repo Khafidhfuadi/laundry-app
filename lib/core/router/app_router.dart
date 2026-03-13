@@ -17,6 +17,8 @@ import '../../features/expenses/presentation/pages/expense_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/reports/presentation/pages/report_page.dart';
+import '../../features/reports/presentation/pages/report_detail_page.dart';
+import '../../features/reports/domain/entities/report_detail.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -107,6 +109,21 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/reports',
         pageBuilder: (context, state) =>
             const NoTransitionPage(child: ReportPage()),
+      ),
+      GoRoute(
+        path: '/reports/income',
+        builder: (context, state) =>
+            const ReportDetailPage(type: ReportDetailType.income),
+      ),
+      GoRoute(
+        path: '/reports/expense',
+        builder: (context, state) =>
+            const ReportDetailPage(type: ReportDetailType.expense),
+      ),
+      GoRoute(
+        path: '/reports/net-profit',
+        builder: (context, state) =>
+            const ReportDetailPage(type: ReportDetailType.netProfit),
       ),
       GoRoute(
         path: '/profile',

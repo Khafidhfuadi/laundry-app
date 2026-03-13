@@ -30,7 +30,12 @@ class ExpenseRemoteDatasourceImpl implements ExpenseRemoteDatasource {
       query = query.gte('expense_date', startDate.toUtc().toIso8601String());
     }
     if (endDate != null) {
-      query = query.lte('expense_date', endDate.toUtc().toIso8601String());
+      final exclusiveEnd = DateTime(
+        endDate.year,
+        endDate.month,
+        endDate.day,
+      ).add(const Duration(days: 1));
+      query = query.lt('expense_date', exclusiveEnd.toUtc().toIso8601String());
     }
 
     final response = await query.order('expense_date', ascending: false);

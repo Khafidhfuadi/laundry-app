@@ -5,6 +5,8 @@ abstract class TransactionRemoteDatasource {
   Future<List<TransactionEntity>> getTransactions({
     String? status,
     String? outletId,
+    DateTime? startDate,
+    DateTime? endDate,
   });
   Future<TransactionEntity> getTransactionById(String id);
   Future<TransactionEntity> createTransaction(TransactionEntity transaction);
@@ -42,6 +44,8 @@ class TransactionRemoteDatasourceImpl implements TransactionRemoteDatasource {
   Future<List<TransactionEntity>> getTransactions({
     String? status,
     String? outletId,
+    DateTime? startDate,
+    DateTime? endDate,
   }) async {
     PostgrestFilterBuilder query = supabaseClient
         .from('transactions')
@@ -53,6 +57,18 @@ class TransactionRemoteDatasourceImpl implements TransactionRemoteDatasource {
 
     if (outletId != null && outletId.isNotEmpty) {
       query = query.eq('outlet_id', outletId);
+    }
+
+    if (startDate != null) {
+      query = query.gte('created_at', startDate.toUtc().toIso8601String());
+    }
+    if (endDate != null) {
+      final exclusiveEnd = DateTime(
+        endDate.year,
+        endDate.month,
+        endDate.day,
+      ).add(const Duration(days: 1));
+      query = query.lt('created_at', exclusiveEnd.toUtc().toIso8601String());
     }
 
     final response = await query.order('created_at', ascending: false);

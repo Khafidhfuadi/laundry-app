@@ -13,11 +13,15 @@ class TransactionRepositoryImpl implements TransactionRepository {
   Future<Either<Failure, List<TransactionEntity>>> getTransactions({
     String? status,
     String? outletId,
+    DateTime? startDate,
+    DateTime? endDate,
   }) async {
     try {
       final transactions = await remoteDatasource.getTransactions(
         status: status,
         outletId: outletId,
+        startDate: startDate,
+        endDate: endDate,
       );
       return right(transactions);
     } catch (e) {
