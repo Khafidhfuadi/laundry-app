@@ -96,12 +96,12 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                   _buildAppBar(),
                   _buildFilterChips(),
                   _buildSummaryGrid(summary),
-                  _buildDetailReportsListSection(context),
                   _buildBarChartSection(summary),
                   _buildTopServicesSection(summary),
                   _buildCustomerStatsSection(summary),
                   if (summary.expenseByCategory.isNotEmpty)
                     _buildDonutChartSection(summary),
+                  _buildDetailReportsListSection(context),
                   const SizedBox(height: 100),
                 ],
               ),
@@ -234,7 +234,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
         childAspectRatio: 1.5,
         children: [
           _buildStatCard(
-            'Total Pemasukan',
+            'TOTAL OMSET',
             fmt.format(summary.totalIncome),
             true,
             false,
@@ -242,7 +242,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             baselineLabel: comparisonLabel,
           ),
           _buildStatCard(
-            'Pengeluaran',
+            'TOTAL PENGELUARAN',
             fmt.format(summary.totalExpense),
             false,
             true,
@@ -250,7 +250,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             baselineLabel: comparisonLabel,
           ),
           _buildStatCard(
-            'Laba Bersih',
+            'TOTAL PENDAPATAN',
             fmt.format(summary.netProfit),
             summary.netProfit >= 0,
             false,
@@ -259,7 +259,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             baselineLabel: comparisonLabel,
           ),
           _buildStatCard(
-            'Transaksi',
+            'TOTAL TRANSAKSI',
             summary.totalTransactions.toString(),
             true,
             false,

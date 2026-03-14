@@ -17,7 +17,13 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedFilter = 'Semua';
 
-  final List<String> _filters = ['Semua', 'Proses', 'Siap Ambil', 'Selesai', 'Dibatalkan'];
+  final List<String> _filters = [
+    'Semua',
+    'Proses',
+    'Siap Ambil',
+    'Selesai',
+    'Dibatalkan',
+  ];
 
   @override
   void initState() {

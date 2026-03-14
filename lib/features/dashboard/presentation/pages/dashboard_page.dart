@@ -42,6 +42,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     double pndpTotal = 0;
     int trxKemarin = 0;
     double pndpKemarin = 0;
+    int trxProses = 0;
+    int trxSiapDiambil = 0;
+    int trxTerlambat = 0;
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -59,6 +62,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           trx.createdAt.month,
           trx.createdAt.day,
         );
+        final isOverdue =
+            trx.estimatedCompletionDate.isBefore(now) &&
+            trx.status != 'COMPLETED' &&
+            trx.status != 'PICKED_UP' &&
+            trx.status != 'CANCELLED';
 
         // Today's metrics
         if (trxDate == today) {
@@ -77,6 +85,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         if (diff >= 0 && diff < 7) {
           dailyRevenue[6 - diff] += (trx.totalPrice / 1000); // In thousands
         }
+
+        if (trx.status == 'PROCESS') trxProses++;
+        if (trx.status == 'READY') trxSiapDiambil++;
+        if (isOverdue) trxTerlambat++;
       }
     }
 
@@ -118,111 +130,183 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. App Bar Area
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE8F0FE),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.asset(
-                            'assets/img/laundry-icon.png',
-                            width: 24,
-                            height: 24,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Text(
-                        'Laundry Hub',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1E293B),
-                        ),
-                      ),
-                    ],
+              // 1. Header: App Bar + Profile
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFF2F7FF), Color(0xFFEAF2FF)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: const Color(0xFFD8E6FF)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF0F62FE).withValues(alpha: 0.08),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
                     ),
-                    child: const Icon(
-                      Icons.notifications_none,
-                      color: Color(0xFF64748B),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              // 2. Profile Area
-              Row(
-                children: [
-                  const CircleAvatar(
-                    radius: 30,
-                    backgroundColor: Color(0xFF38BDF8),
-                    child: Icon(Icons.person, color: Colors.white, size: 36),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    Row(
                       children: [
-                        const Text(
-                          'Selamat datang,',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF64748B),
-                            fontWeight: FontWeight.w500,
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.asset(
+                              'assets/img/laundry-icon.png',
+                              width: 22,
+                              height: 22,
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         ),
-                        Text(
-                          userName,
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1E293B),
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Text(
+                            'Laundry Hub',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1E293B),
+                              letterSpacing: 0.2,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.location_on,
-                              size: 14,
-                              color: Color(0xFF0F62FE),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              outletName,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: const Color(
-                                  0xFF0F62FE,
-                                ).withValues(alpha: 0.8),
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ],
+
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.notifications_none_rounded,
+                            color: Color(0xFF475569),
+                            size: 20,
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 14),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.88),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: const Color(0xFFDCE8FC),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE7F0FF),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: const Color(0xFFCFE0FF),
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.person_rounded,
+                              color: Color(0xFF2563EB),
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Selamat datang, $userName',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF1E293B),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEFF5FF),
+                                    borderRadius: BorderRadius.circular(99),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.location_on_outlined,
+                                        size: 12,
+                                        color: Color(0xFF3B82F6),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Flexible(
+                                        child: Text(
+                                          outletName,
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                            color: Color(0xFF1D4ED8),
+                                            letterSpacing: 0.3,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          InkWell(
+                            onTap: () => context.push('/select-outlet'),
+                            borderRadius: BorderRadius.circular(9),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 7,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEFF5FF),
+                                borderRadius: BorderRadius.circular(9),
+                              ),
+                              child: const Icon(
+                                Icons.storefront_outlined,
+                                size: 16,
+                                color: Color(0xFF1D4ED8),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
 
               // 3. Summary Cards
               Row(
@@ -239,7 +323,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: _buildSummaryCard(
-                      title: 'PENDAPATAN\nHARI INI',
+                      title: 'OMSET\nHARI INI',
                       value: pndpHariIni,
                       change: pndpChange,
                       isPositive: !pndpChange.startsWith('-'),
@@ -248,7 +332,51 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              // const SizedBox(height: 24),
+
+              // const Text(
+              //   'Ringkasan Status Transaksi',
+              //   style: TextStyle(
+              //     fontSize: 14,
+              //     fontWeight: FontWeight.bold,
+              //     color: Color(0xFF1E293B),
+              //   ),
+              // ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatusSummaryCard(
+                      title: 'Proses',
+                      value: trxProses.toString(),
+                      icon: Icons.hourglass_top_rounded,
+                      color: const Color(0xFF2563EB),
+                      bgColor: const Color(0xFFEFF6FF),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildStatusSummaryCard(
+                      title: 'Siap Diambil',
+                      value: trxSiapDiambil.toString(),
+                      icon: Icons.check_circle_outline_rounded,
+                      color: const Color(0xFF059669),
+                      bgColor: const Color(0xFFECFDF5),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildStatusSummaryCard(
+                      title: 'Terlambat',
+                      value: trxTerlambat.toString(),
+                      icon: Icons.warning_amber_rounded,
+                      color: const Color(0xFFDC2626),
+                      bgColor: const Color(0xFFFEF2F2),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
 
               // 4. Chart Section
               // Container(
@@ -478,7 +606,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -554,7 +682,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.02),
+              color: Colors.black.withValues(alpha: 0.02),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -582,6 +710,57 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildStatusSummaryCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+    required Color bgColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
+            child: Icon(icon, size: 14, color: color),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF1E293B),
+            ),
+          ),
+          const SizedBox(height: 1),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: color.withValues(alpha: 0.9),
+            ),
+          ),
+        ],
       ),
     );
   }
