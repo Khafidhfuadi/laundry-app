@@ -99,6 +99,10 @@ ReportDetailState buildReportDetailState({
   final normalizedStart = asDateOnly(startDate);
   final normalizedEnd = asDateOnly(endDate);
 
+  final filteredOmsetTransactions = transactions.where((t) {
+    final d = asDateOnly(t.createdAt);
+    return isInRange(d, normalizedStart, normalizedEnd);
+  }).toList();
   final filteredRevenueTransactions = transactions.where((t) {
     final paymentDate = effectivePaymentDate(t);
     if (paymentDate == null) return false;
@@ -110,9 +114,14 @@ ReportDetailState buildReportDetailState({
     return isInRange(d, normalizedStart, normalizedEnd);
   }).toList();
 
+  final turnoverByDate = <DateTime, double>{};
   final incomeByDate = <DateTime, double>{};
   final expenseByDate = <DateTime, double>{};
 
+  for (final tx in filteredOmsetTransactions) {
+    final d = asDateOnly(tx.createdAt);
+    turnoverByDate[d] = (turnoverByDate[d] ?? 0) + tx.totalPrice;
+  }
   for (final tx in filteredRevenueTransactions) {
     final paymentDate = effectivePaymentDate(tx);
     if (paymentDate == null) continue;
@@ -128,17 +137,24 @@ ReportDetailState buildReportDetailState({
   final seriesPoints = <ReportSeriesPoint>[];
   var cursor = normalizedStart;
   while (!cursor.isAfter(normalizedEnd)) {
+    final turnover = turnoverByDate[cursor] ?? 0;
     final income = incomeByDate[cursor] ?? 0;
     final expense = expenseByDate[cursor] ?? 0;
     seriesPoints.add(
       ReportSeriesPoint(
         date: cursor,
+        turnover: turnover,
         income: income,
         expense: expense,
         netProfit: income - expense,
       ),
     );
     cursor = cursor.add(const Duration(days: 1));
+  }
+
+  double totalTurnover = 0;
+  for (final tx in filteredOmsetTransactions) {
+    totalTurnover += tx.totalPrice;
   }
 
   double totalIncome = 0;
@@ -152,7 +168,20 @@ ReportDetailState buildReportDetailState({
   }
 
   final logs = <ReportLogItem>[];
-  if (type == ReportDetailType.income) {
+  if (type == ReportDetailType.turnover) {
+    for (final tx in filteredOmsetTransactions) {
+      logs.add(
+        ReportLogItem(
+          date: tx.createdAt,
+          title: tx.transactionCode,
+          subtitle: tx.customer?.name ?? 'Order customer',
+          amount: tx.totalPrice,
+          kind: ReportLogKind.income,
+          referenceId: tx.id,
+        ),
+      );
+    }
+  } else if (type == ReportDetailType.income) {
     for (final tx in filteredRevenueTransactions) {
       final paymentDate = effectivePaymentDate(tx);
       if (paymentDate == null) continue;
@@ -216,6 +245,7 @@ ReportDetailState buildReportDetailState({
   logs.sort((a, b) => b.date.compareTo(a.date));
 
   final totalAmount = switch (type) {
+    ReportDetailType.turnover => totalTurnover,
     ReportDetailType.income => totalIncome,
     ReportDetailType.expense => totalExpense,
     ReportDetailType.netProfit => totalIncome - totalExpense,

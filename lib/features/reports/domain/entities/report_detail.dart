@@ -1,4 +1,4 @@
-enum ReportDetailType { income, expense, netProfit }
+enum ReportDetailType { turnover, income, expense, netProfit }
 
 enum ReportDetailRangePreset { today, last7Days, last30Days, thisMonth, custom }
 
@@ -6,12 +6,14 @@ enum ReportLogKind { income, expense }
 
 class ReportSeriesPoint {
   final DateTime date;
+  final double turnover;
   final double income;
   final double expense;
   final double netProfit;
 
   const ReportSeriesPoint({
     required this.date,
+    required this.turnover,
     required this.income,
     required this.expense,
     required this.netProfit,
@@ -57,7 +59,7 @@ class ReportDetailState {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     return ReportDetailState(
-      type: ReportDetailType.income,
+      type: ReportDetailType.turnover,
       startDate: today,
       endDate: today,
       seriesPoints: const [],

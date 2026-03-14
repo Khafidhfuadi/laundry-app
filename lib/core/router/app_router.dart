@@ -111,6 +111,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             const NoTransitionPage(child: ReportPage()),
       ),
       GoRoute(
+        path: '/reports/omset',
+        builder: (context, state) =>
+            const ReportDetailPage(type: ReportDetailType.turnover),
+      ),
+      GoRoute(
         path: '/reports/income',
         builder: (context, state) =>
             const ReportDetailPage(type: ReportDetailType.income),

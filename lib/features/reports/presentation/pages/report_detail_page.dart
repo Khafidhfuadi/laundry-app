@@ -117,6 +117,8 @@ class _ReportDetailPageState extends ConsumerState<ReportDetailPage> {
 
   String _title() {
     switch (widget.type) {
+      case ReportDetailType.turnover:
+        return 'Laporan Omset';
       case ReportDetailType.income:
         return 'Laporan Pendapatan';
       case ReportDetailType.expense:
@@ -128,6 +130,8 @@ class _ReportDetailPageState extends ConsumerState<ReportDetailPage> {
 
   Color _primaryColor() {
     switch (widget.type) {
+      case ReportDetailType.turnover:
+        return const Color(0xFF1D4ED8);
       case ReportDetailType.income:
         return const Color(0xFF0F62FE);
       case ReportDetailType.expense:
@@ -154,6 +158,8 @@ class _ReportDetailPageState extends ConsumerState<ReportDetailPage> {
 
   double _pointValue(ReportSeriesPoint p) {
     switch (widget.type) {
+      case ReportDetailType.turnover:
+        return p.turnover;
       case ReportDetailType.income:
         return p.income;
       case ReportDetailType.expense:

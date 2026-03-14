@@ -214,6 +214,27 @@ class _ReportPageState extends ConsumerState<ReportPage> {
   // -------------------------------------------------------------------------
   // Summary Grid (Kartu Keuangan)
   // -------------------------------------------------------------------------
+  void _showSummaryInfoDialog({
+    required String title,
+    required String description,
+  }) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(description),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Tutup'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildSummaryGrid(ReportSummary summary) {
     final fmt = NumberFormat.currency(
       locale: 'id_ID',
@@ -230,13 +251,15 @@ class _ReportPageState extends ConsumerState<ReportPage> {
         physics: const NeverScrollableScrollPhysics(),
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
-        childAspectRatio: 1.5,
+        childAspectRatio: 1.28,
         children: [
           _buildStatCard(
             'TOTAL OMSET',
             fmt.format(summary.totalIncome),
             true,
             false,
+            infoDescription:
+                'Omset adalah total nilai order yang dibuat customer pada rentang waktu terpilih, terlepas dari status pembayarannya.',
             changePercent: summary.incomeChangePercent,
             baselineLabel: comparisonLabel,
           ),
@@ -245,6 +268,8 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             fmt.format(summary.totalRevenue),
             true,
             false,
+            infoDescription:
+                'Pendapatan adalah total uang yang benar-benar diterima (cash-in) pada rentang waktu terpilih, termasuk pembayaran lunas atau DP/sebagian.',
             highlightValue: true,
             changePercent: summary.revenueChangePercent,
             baselineLabel: comparisonLabel,
@@ -254,6 +279,8 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             fmt.format(summary.totalExpense),
             false,
             true,
+            infoDescription:
+                'Pengeluaran adalah total biaya operasional yang dicatat pada rentang waktu terpilih.',
             changePercent: summary.expenseChangePercent,
             baselineLabel: comparisonLabel,
           ),
@@ -262,6 +289,8 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             fmt.format(summary.netProfit),
             summary.netProfit >= 0,
             false,
+            infoDescription:
+                'Laba/Rugi dihitung dari Pendapatan dikurangi Pengeluaran pada rentang waktu terpilih.',
             changePercent: summary.netProfitChangePercent,
             baselineLabel: comparisonLabel,
           ),
@@ -275,6 +304,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     String value,
     bool isPositive,
     bool isExpense, {
+    required String infoDescription,
     bool highlightValue = false,
     required double changePercent,
     required String baselineLabel,
@@ -290,7 +320,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
               : const Color(0xFFEF4444));
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -306,36 +336,66 @@ class _ReportPageState extends ConsumerState<ReportPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: Color(0xFF64748B),
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: highlightValue
-                  ? const Color(0xFF0F62FE)
-                  : const Color(0xFF1E293B),
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
           Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF64748B),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: () => _showSummaryInfoDialog(
+                  title: title,
+                  description: infoDescription,
+                ),
+                child: const Padding(
+                  padding: EdgeInsets.only(left: 6),
+                  child: Icon(
+                    Icons.help_outline,
+                    size: 16,
+                    color: Color(0xFF94A3B8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                maxLines: 1,
+                style: TextStyle(
+                  color: highlightValue
+                      ? const Color(0xFF0F62FE)
+                      : const Color(0xFF1E293B),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 4,
+            runSpacing: 2,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Icon(
                 isChangePositive ? Icons.trending_up : Icons.trending_down,
                 color: trendColor,
                 size: 16,
               ),
-              const SizedBox(width: 4),
               Text(
                 changeLabel,
                 style: TextStyle(
@@ -344,16 +404,9 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                   color: trendColor,
                 ),
               ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  'vs $baselineLabel',
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Color(0xFF94A3B8),
-                  ),
-                ),
+              Text(
+                'vs $baselineLabel',
+                style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
               ),
             ],
           ),
@@ -380,6 +433,14 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             ),
           ),
           const SizedBox(height: 12),
+          _buildDetailReportTile(
+            icon: Icons.receipt_long,
+            title: 'Laporan Omset',
+            subtitle: 'Grafik dan log omset',
+            iconColor: const Color(0xFF1D4ED8),
+            iconBgColor: const Color(0xFFDBEAFE),
+            onTap: () => context.push('/reports/omset'),
+          ),
           _buildDetailReportTile(
             icon: Icons.trending_up,
             title: 'Laporan Pendapatan',
