@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/presentation/widgets/custom_bottom_nav.dart';
 import '../../../authentication/presentation/controllers/auth_controller.dart';
-import '../../../transactions/domain/entities/transaction_entity.dart';
 import '../../../outlet/presentation/controllers/active_outlet_controller.dart';
 import '../../../transactions/presentation/controllers/transaction_controller.dart';
 
@@ -49,13 +47,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
     List<double> dailyRevenue = List.filled(7, 0.0);
-    List<TransactionEntity> recentTransactions = [];
 
     if (trxState.hasValue && trxState.value != null) {
       final transactions = trxState.value!;
 
       // Get recent 3 transactions
-      recentTransactions = transactions.take(3).toList();
 
       for (var trx in transactions) {
         final trxDate = DateTime(
@@ -536,23 +532,6 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     );
   }
 
-  BarChartGroupData _buildBarGroup(int x, double y, bool isHighlighted) {
-    return BarChartGroupData(
-      x: x,
-      barRods: [
-        BarChartRodData(
-          toY: y,
-          color: isHighlighted
-              ? const Color(0xFF0F62FE)
-              : const Color(0xFFBFD4FF),
-          width: 28,
-          borderRadius: BorderRadius.circular(4),
-          backDrawRodData: BackgroundBarChartRodData(show: false),
-        ),
-      ],
-    );
-  }
-
   Widget _buildQuickActionBtn(
     BuildContext context,
     String title,
@@ -598,107 +577,6 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildActivityItem({
-    required String id,
-    required String name,
-    required String desc,
-    required String status,
-    IconData defaultIcon = Icons.group_work_outlined,
-    Color iconColor = const Color(0xFFF97316),
-    Color iconBgColor = const Color(0xFFFFEDD5),
-  }) {
-    if (status == 'READY' && defaultIcon == Icons.group_work_outlined) {
-      defaultIcon = Icons.check_circle_outline;
-      iconColor = const Color(0xFF10B981);
-      iconBgColor = const Color(0xFFD1FAE5);
-    } else if (status == 'PROCESS' &&
-        defaultIcon == Icons.group_work_outlined) {
-      defaultIcon = Icons.sync;
-      iconColor = const Color(0xFFF97316);
-      iconBgColor = const Color(0xFFFFEDD5);
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: iconBgColor,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(defaultIcon, color: iconColor, size: 24),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                RichText(
-                  text: TextSpan(
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF1E293B),
-                    ),
-                    children: [
-                      TextSpan(
-                        text: '$id - ',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      TextSpan(
-                        text: name,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  desc,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: status == 'PROCESS'
-                  ? const Color(0xFFFFEDD5)
-                  : const Color(0xFFD1FAE5),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              status,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                color: status == 'PROCESS'
-                    ? const Color(0xFFEA580C)
-                    : const Color(0xFF059669),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
