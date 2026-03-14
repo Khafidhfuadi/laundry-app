@@ -75,9 +75,34 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
     return filtered;
   }
 
+  int _getFilterCount(String filter, List<TransactionEntity> allTransactions) {
+    if (filter == 'Semua') {
+      return allTransactions.length;
+    }
+    if (filter == 'Proses') {
+      return allTransactions.where((t) => t.status == 'PROCESS').length;
+    }
+    if (filter == 'Siap Ambil') {
+      return allTransactions.where((t) => t.status == 'READY').length;
+    }
+    if (filter == 'Selesai') {
+      return allTransactions
+          .where((t) => t.status == 'COMPLETED' || t.status == 'PICKED_UP')
+          .length;
+    }
+    if (filter == 'Dibatalkan') {
+      return allTransactions.where((t) => t.status == 'CANCELLED').length;
+    }
+    return 0;
+  }
+
   @override
   Widget build(BuildContext context) {
     final transactionState = ref.watch(transactionControllerProvider);
+    final allTransactions = transactionState.maybeWhen(
+      data: (transactions) => transactions,
+      orElse: () => <TransactionEntity>[],
+    );
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -99,7 +124,7 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Icon(
-                          Icons.local_laundry_service,
+                          Icons.receipt_long_outlined,
                           color: Color(0xFF0F62FE),
                         ),
                       ),
@@ -166,6 +191,7 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
                 itemBuilder: (context, index) {
                   final filter = _filters[index];
                   final isSelected = filter == _selectedFilter;
+                  final count = _getFilterCount(filter, allTransactions);
                   return GestureDetector(
                     onTap: () {
                       setState(() {
@@ -184,17 +210,45 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
                             ? null
                             : Border.all(color: const Color(0xFFE2E8F0)),
                       ),
-                      child: Text(
-                        filter,
-                        style: TextStyle(
-                          color: isSelected
-                              ? Colors.white
-                              : const Color(0xFF64748B),
-                          fontWeight: isSelected
-                              ? FontWeight.w600
-                              : FontWeight.normal,
-                          fontSize: 14,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            filter,
+                            style: TextStyle(
+                              color: isSelected
+                                  ? Colors.white
+                                  : const Color(0xFF64748B),
+                              fontWeight: isSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? Colors.white.withValues(alpha: 0.24)
+                                  : const Color(0xFFE2E8F0),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              '$count',
+                              style: TextStyle(
+                                color: isSelected
+                                    ? Colors.white
+                                    : const Color(0xFF475569),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   );
@@ -311,7 +365,7 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),

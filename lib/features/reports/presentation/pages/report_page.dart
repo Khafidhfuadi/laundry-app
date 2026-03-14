@@ -129,18 +129,17 @@ class _ReportPageState extends ConsumerState<ReportPage> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0F62FE),
-                  borderRadius: BorderRadius.circular(8),
+                  color: const Color(0xFFE8F0FE),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
-                  Icons.bar_chart,
-                  color: Colors.white,
-                  size: 20,
+                  Icons.add_chart_outlined,
+                  color: Color(0xFF0F62FE),
                 ),
               ),
               const SizedBox(width: 12),
               const Text(
-                'Laporan & Statistik',
+                'Laporan',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
