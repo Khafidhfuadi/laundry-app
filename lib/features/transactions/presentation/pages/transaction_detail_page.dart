@@ -230,29 +230,39 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
 
     setState(() => _isSendingWhatsApp = true);
 
-    final itemLines = trx.items.map((item) {
-      final serviceName = item.serviceVariant?.service?.name ?? 'Layanan';
-      final variantName = item.serviceVariant?.variantName ?? '';
-      final unitType = item.serviceVariant?.unitType ?? 'Kg';
-      final label = variantName.isEmpty
-          ? serviceName
-          : '$serviceName - $variantName';
-      return '$label (${_formatQuantity(item.quantity)} $unitType) = ${_formatter.format(item.subtotal)}';
-    }).toList();
+    bool success;
+    if (trx.status == 'READY') {
+      success = await WhatsAppHelper.sendStatusUpdate(
+        phoneNumber: customer.phoneNumber,
+        customerName: customer.name,
+        transactionCode: trx.transactionCode,
+        status: trx.status,
+      );
+    } else {
+      final itemLines = trx.items.map((item) {
+        final serviceName = item.serviceVariant?.service?.name ?? 'Layanan';
+        final variantName = item.serviceVariant?.variantName ?? '';
+        final unitType = item.serviceVariant?.unitType ?? 'Kg';
+        final label = variantName.isEmpty
+            ? serviceName
+            : '$serviceName - $variantName';
+        return '$label (${_formatQuantity(item.quantity)} $unitType) = ${_formatter.format(item.subtotal)}';
+      }).toList();
 
-    final success = await WhatsAppHelper.sendTransactionSummary(
-      phoneNumber: customer.phoneNumber,
-      customerName: customer.name,
-      transactionCode: trx.transactionCode,
-      transactionDate: trx.createdAt,
-      estimatedCompletionDate: trx.estimatedCompletionDate,
-      itemLines: itemLines,
-      totalAmount: trx.totalPrice,
-      paidAmount: trx.paidAmount,
-      paymentStatus: trx.paymentStatus,
-      outletName: trx.outlet?.name ?? 'Laundry App',
-      notes: trx.notes,
-    );
+      success = await WhatsAppHelper.sendTransactionSummary(
+        phoneNumber: customer.phoneNumber,
+        customerName: customer.name,
+        transactionCode: trx.transactionCode,
+        transactionDate: trx.createdAt,
+        estimatedCompletionDate: trx.estimatedCompletionDate,
+        itemLines: itemLines,
+        totalAmount: trx.totalPrice,
+        paidAmount: trx.paidAmount,
+        paymentStatus: trx.paymentStatus,
+        outletName: trx.outlet?.name ?? 'Laundry App',
+        notes: trx.notes,
+      );
+    }
 
     if (!mounted) return;
     setState(() => _isSendingWhatsApp = false);

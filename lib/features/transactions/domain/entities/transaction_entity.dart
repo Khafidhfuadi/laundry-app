@@ -53,11 +53,13 @@ class TransactionEntity {
   final String status;
   final String paymentStatus;
   final double paidAmount;
+  final double refundAmount;
   final String notes;
   final String? perfumeId;
   final DateTime estimatedCompletionDate;
   final DateTime createdAt;
   final DateTime? paymentReceivedAt;
+  final DateTime? refundAt;
   final DateTime? processedAt;
   final DateTime? readyAt;
   final DateTime? completedAt;
@@ -77,11 +79,13 @@ class TransactionEntity {
     required this.status,
     required this.paymentStatus,
     required this.paidAmount,
+    this.refundAmount = 0,
     required this.notes,
     this.perfumeId,
     required this.estimatedCompletionDate,
     required this.createdAt,
     this.paymentReceivedAt,
+    this.refundAt,
     this.processedAt,
     this.readyAt,
     this.completedAt,
@@ -101,6 +105,7 @@ class TransactionEntity {
       status: json['status'] as String? ?? 'PROCESS',
       paymentStatus: json['payment_status'] as String? ?? 'UNPAID',
       paidAmount: (json['paid_amount'] as num?)?.toDouble() ?? 0.0,
+      refundAmount: (json['refund_amount'] as num?)?.toDouble() ?? 0.0,
       notes: json['notes'] ?? '',
       perfumeId: json['perfume_id'] as String?,
       estimatedCompletionDate: DateTime.parse(
@@ -109,6 +114,9 @@ class TransactionEntity {
       createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
       paymentReceivedAt: json['payment_received_at'] != null
           ? DateTime.parse(json['payment_received_at'] as String).toLocal()
+          : null,
+        refundAt: json['refund_at'] != null
+          ? DateTime.parse(json['refund_at'] as String).toLocal()
           : null,
       processedAt: json['processed_at'] != null
           ? DateTime.parse(json['processed_at'] as String).toLocal()
@@ -146,6 +154,7 @@ class TransactionEntity {
       'status': status,
       'payment_status': paymentStatus,
       'paid_amount': paidAmount,
+      'refund_amount': refundAmount,
       'notes': notes,
       if (perfumeId != null) 'perfume_id': perfumeId,
       'estimated_completion_date': estimatedCompletionDate
@@ -154,6 +163,7 @@ class TransactionEntity {
       'created_at': createdAt.toUtc().toIso8601String(),
       if (paymentReceivedAt != null)
         'payment_received_at': paymentReceivedAt!.toUtc().toIso8601String(),
+      if (refundAt != null) 'refund_at': refundAt!.toUtc().toIso8601String(),
       if (processedAt != null)
         'processed_at': processedAt!.toUtc().toIso8601String(),
       if (readyAt != null) 'ready_at': readyAt!.toUtc().toIso8601String(),
