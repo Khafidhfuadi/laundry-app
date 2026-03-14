@@ -40,6 +40,12 @@ class TransactionRemoteDatasourceImpl implements TransactionRemoteDatasource {
     )
   ''';
 
+  Map<String, dynamic> _withoutPaymentReceivedAt(Map<String, dynamic> payload) {
+    final copy = Map<String, dynamic>.from(payload);
+    copy.remove('payment_received_at');
+    return copy;
+  }
+
   @override
   Future<List<TransactionEntity>> getTransactions({
     String? status,
@@ -97,11 +103,30 @@ class TransactionRemoteDatasourceImpl implements TransactionRemoteDatasource {
     // dengan skenario fallback sederhana jika belum ada RPC
 
     // 1. Insert header
-    final headerResponse = await supabaseClient
-        .from('transactions')
-        .insert(transaction.toJson())
-        .select()
-        .single();
+    Map<String, dynamic> payload = transaction.toJson();
+    if (transaction.paidAmount > 0 && payload['payment_received_at'] == null) {
+      payload['payment_received_at'] = DateTime.now().toUtc().toIso8601String();
+    }
+
+    late final dynamic headerResponse;
+    try {
+      headerResponse = await supabaseClient
+          .from('transactions')
+          .insert(payload)
+          .select()
+          .single();
+    } on PostgrestException catch (e) {
+      final message = e.message.toLowerCase();
+      if (message.contains('payment_received_at')) {
+        headerResponse = await supabaseClient
+            .from('transactions')
+            .insert(_withoutPaymentReceivedAt(payload))
+            .select()
+            .single();
+      } else {
+        rethrow;
+      }
+    }
 
     final transactionId = headerResponse['id'];
 
@@ -152,11 +177,28 @@ class TransactionRemoteDatasourceImpl implements TransactionRemoteDatasource {
     final tx = await getTransactionById(id);
     final newPaid = tx.paidAmount + amountPaid;
     final String paymentStatus = newPaid >= tx.totalPrice ? 'PAID' : 'PARTIAL';
+    final updates = <String, dynamic>{
+      'paid_amount': newPaid,
+      'payment_status': paymentStatus,
+    };
 
-    await supabaseClient
-        .from('transactions')
-        .update({'paid_amount': newPaid, 'payment_status': paymentStatus})
-        .eq('id', id);
+    if (amountPaid > 0) {
+      updates['payment_received_at'] = DateTime.now().toUtc().toIso8601String();
+    }
+
+    try {
+      await supabaseClient.from('transactions').update(updates).eq('id', id);
+    } on PostgrestException catch (e) {
+      final message = e.message.toLowerCase();
+      if (message.contains('payment_received_at')) {
+        await supabaseClient
+            .from('transactions')
+            .update(_withoutPaymentReceivedAt(updates))
+            .eq('id', id);
+      } else {
+        rethrow;
+      }
+    }
 
     return getTransactionById(id);
   }

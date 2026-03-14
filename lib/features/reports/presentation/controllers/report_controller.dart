@@ -38,6 +38,22 @@ class ReportController extends AsyncNotifier<ReportSummary> {
   late TransactionRemoteDatasource _txDs;
   late ExpenseRemoteDatasource _expDs;
 
+  double _realizedRevenueByPaymentStatus(TransactionEntity transaction) {
+    if (transaction.paymentStatus == 'PAID') {
+      return transaction.totalPrice;
+    }
+    if (transaction.paymentStatus == 'PARTIAL') {
+      return transaction.paidAmount.clamp(0, transaction.totalPrice);
+    }
+    return 0;
+  }
+
+  DateTime? _effectivePaymentDate(TransactionEntity transaction) {
+    final realizedRevenue = _realizedRevenueByPaymentStatus(transaction);
+    if (realizedRevenue <= 0) return null;
+    return transaction.paymentReceivedAt ?? transaction.createdAt;
+  }
+
   @override
   FutureOr<ReportSummary> build() async {
     _txDs = ref.watch(_reportTransactionDatasourceProvider);
@@ -99,8 +115,14 @@ class ReportController extends AsyncNotifier<ReportSummary> {
       }
 
       // Filter data periode saat ini
-      final transactions = allTransactions.where((t) {
+      final omsetTransactions = allTransactions.where((t) {
         final d = asDateOnly(t.createdAt);
+        return isInRange(d, currentStartDate, currentEndDate);
+      }).toList();
+      final revenueTransactions = allTransactions.where((t) {
+        final paymentDate = _effectivePaymentDate(t);
+        if (paymentDate == null) return false;
+        final d = asDateOnly(paymentDate);
         return isInRange(d, currentStartDate, currentEndDate);
       }).toList();
       final expenses = allExpenses.where((e) {
@@ -109,8 +131,14 @@ class ReportController extends AsyncNotifier<ReportSummary> {
       }).toList();
 
       // Filter data periode sebelumnya untuk pembanding
-      final previousTransactions = allTransactions.where((t) {
+      final previousOmsetTransactions = allTransactions.where((t) {
         final d = asDateOnly(t.createdAt);
+        return isInRange(d, previousStartDate, previousEndDate);
+      }).toList();
+      final previousRevenueTransactions = allTransactions.where((t) {
+        final paymentDate = _effectivePaymentDate(t);
+        if (paymentDate == null) return false;
+        final d = asDateOnly(paymentDate);
         return isInRange(d, previousStartDate, previousEndDate);
       }).toList();
       final previousExpenses = allExpenses.where((e) {
@@ -118,10 +146,20 @@ class ReportController extends AsyncNotifier<ReportSummary> {
         return isInRange(d, previousStartDate, previousEndDate);
       }).toList();
 
-      // --- Ringkasan income ---
+      // --- Ringkasan omset + pendapatan ---
       double totalIncome = 0;
-      for (final t in transactions) {
+      double totalRevenue = 0;
+      double totalReceivables = 0;
+      for (final t in omsetTransactions) {
+        final realizedRevenue = _realizedRevenueByPaymentStatus(t);
         totalIncome += t.totalPrice;
+        totalReceivables += (t.totalPrice - realizedRevenue).clamp(
+          0,
+          double.infinity,
+        );
+      }
+      for (final t in revenueTransactions) {
+        totalRevenue += _realizedRevenueByPaymentStatus(t);
       }
 
       // --- Ringkasan expense ---
@@ -135,8 +173,12 @@ class ReportController extends AsyncNotifier<ReportSummary> {
 
       // --- Ringkasan pembanding ---
       double previousIncome = 0;
-      for (final t in previousTransactions) {
+      double previousRevenue = 0;
+      for (final t in previousOmsetTransactions) {
         previousIncome += t.totalPrice;
+      }
+      for (final t in previousRevenueTransactions) {
+        previousRevenue += _realizedRevenueByPaymentStatus(t);
       }
       double previousExpense = 0;
       for (final e in previousExpenses) {
@@ -151,25 +193,29 @@ class ReportController extends AsyncNotifier<ReportSummary> {
       }
 
       final incomeChangePercent = pctChange(totalIncome, previousIncome);
+      final revenueChangePercent = pctChange(totalRevenue, previousRevenue);
       final expenseChangePercent = pctChange(totalExpense, previousExpense);
       final netProfitChangePercent = pctChange(
-        totalIncome - totalExpense,
-        previousIncome - previousExpense,
+        totalRevenue - totalExpense,
+        previousRevenue - previousExpense,
       );
       final transactionChangePercent = pctChange(
-        transactions.length,
-        previousTransactions.length,
+        omsetTransactions.length,
+        previousOmsetTransactions.length,
       );
 
       // --- Daily arrays (panjang = daysBack, indeks 0 = hari paling lama) ---
       final dailyIncome = List<double>.filled(daysBack, 0.0);
       final dailyExpense = List<double>.filled(daysBack, 0.0);
 
-      for (final t in transactions) {
-        final trxDay = asDateOnly(t.createdAt);
+      for (final t in revenueTransactions) {
+        final paymentDate = _effectivePaymentDate(t);
+        if (paymentDate == null) continue;
+        final trxDay = asDateOnly(paymentDate);
         final diff = today.difference(trxDay).inDays;
         if (diff >= 0 && diff < daysBack) {
-          dailyIncome[(daysBack - 1) - diff] += t.totalPrice / 1000;
+          final realizedRevenue = _realizedRevenueByPaymentStatus(t);
+          dailyIncome[(daysBack - 1) - diff] += realizedRevenue / 1000;
         }
       }
       for (final e in expenses) {
@@ -182,7 +228,7 @@ class ReportController extends AsyncNotifier<ReportSummary> {
 
       // --- Top services ---
       final Map<String, int> serviceCount = {};
-      for (final t in transactions) {
+      for (final t in omsetTransactions) {
         for (final item in t.items) {
           final name = item.serviceVariant?.service?.name ?? 'Layanan';
           serviceCount[name] = (serviceCount[name] ?? 0) + 1;
@@ -203,9 +249,11 @@ class ReportController extends AsyncNotifier<ReportSummary> {
           .toList();
 
       // --- Customer stats ---
-      final activeCustomerIds = transactions.map((t) => t.customerId).toSet();
+      final activeCustomerIds = omsetTransactions
+          .map((t) => t.customerId)
+          .toSet();
       final startOfMonth = DateTime(now.year, now.month, 1);
-      final newCustomerIds = transactions
+      final newCustomerIds = omsetTransactions
           .where((t) => !t.createdAt.isBefore(startOfMonth))
           .map((t) => t.customerId)
           .toSet();
@@ -213,10 +261,13 @@ class ReportController extends AsyncNotifier<ReportSummary> {
       state = AsyncValue.data(
         ReportSummary(
           totalIncome: totalIncome,
+          totalRevenue: totalRevenue,
           totalExpense: totalExpense,
-          netProfit: totalIncome - totalExpense,
-          totalTransactions: transactions.length,
+          netProfit: totalRevenue - totalExpense,
+          totalReceivables: totalReceivables,
+          totalTransactions: omsetTransactions.length,
           incomeChangePercent: incomeChangePercent,
+          revenueChangePercent: revenueChangePercent,
           expenseChangePercent: expenseChangePercent,
           netProfitChangePercent: netProfitChangePercent,
           transactionChangePercent: transactionChangePercent,

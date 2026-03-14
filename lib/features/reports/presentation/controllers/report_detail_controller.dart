@@ -43,11 +43,7 @@ class ReportDetailController extends AsyncNotifier<ReportDetailState> {
   }) async {
     state = const AsyncValue.loading();
     try {
-      final txFuture = _txDs.getTransactions(
-        outletId: outletId,
-        startDate: startDate,
-        endDate: endDate,
-      );
+      final txFuture = _txDs.getTransactions(outletId: outletId);
       final expFuture = _expDs.getExpenses(
         outletId: outletId,
         startDate: startDate,
@@ -80,6 +76,22 @@ ReportDetailState buildReportDetailState({
   required List<TransactionEntity> transactions,
   required List<ExpenseEntity> expenses,
 }) {
+  double realizedRevenueByPaymentStatus(TransactionEntity transaction) {
+    if (transaction.paymentStatus == 'PAID') {
+      return transaction.totalPrice;
+    }
+    if (transaction.paymentStatus == 'PARTIAL') {
+      return transaction.paidAmount.clamp(0, transaction.totalPrice);
+    }
+    return 0;
+  }
+
+  DateTime? effectivePaymentDate(TransactionEntity transaction) {
+    final realizedRevenue = realizedRevenueByPaymentStatus(transaction);
+    if (realizedRevenue <= 0) return null;
+    return transaction.paymentReceivedAt ?? transaction.createdAt;
+  }
+
   DateTime asDateOnly(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
   bool isInRange(DateTime dt, DateTime start, DateTime end) =>
       !dt.isBefore(start) && !dt.isAfter(end);
@@ -87,8 +99,10 @@ ReportDetailState buildReportDetailState({
   final normalizedStart = asDateOnly(startDate);
   final normalizedEnd = asDateOnly(endDate);
 
-  final filteredTransactions = transactions.where((t) {
-    final d = asDateOnly(t.createdAt);
+  final filteredRevenueTransactions = transactions.where((t) {
+    final paymentDate = effectivePaymentDate(t);
+    if (paymentDate == null) return false;
+    final d = asDateOnly(paymentDate);
     return isInRange(d, normalizedStart, normalizedEnd);
   }).toList();
   final filteredExpenses = expenses.where((e) {
@@ -99,9 +113,12 @@ ReportDetailState buildReportDetailState({
   final incomeByDate = <DateTime, double>{};
   final expenseByDate = <DateTime, double>{};
 
-  for (final tx in filteredTransactions) {
-    final d = asDateOnly(tx.createdAt);
-    incomeByDate[d] = (incomeByDate[d] ?? 0) + tx.totalPrice;
+  for (final tx in filteredRevenueTransactions) {
+    final paymentDate = effectivePaymentDate(tx);
+    if (paymentDate == null) continue;
+    final d = asDateOnly(paymentDate);
+    incomeByDate[d] =
+        (incomeByDate[d] ?? 0) + realizedRevenueByPaymentStatus(tx);
   }
   for (final exp in filteredExpenses) {
     final d = asDateOnly(exp.expenseDate);
@@ -125,8 +142,8 @@ ReportDetailState buildReportDetailState({
   }
 
   double totalIncome = 0;
-  for (final tx in filteredTransactions) {
-    totalIncome += tx.totalPrice;
+  for (final tx in filteredRevenueTransactions) {
+    totalIncome += realizedRevenueByPaymentStatus(tx);
   }
 
   double totalExpense = 0;
@@ -136,13 +153,17 @@ ReportDetailState buildReportDetailState({
 
   final logs = <ReportLogItem>[];
   if (type == ReportDetailType.income) {
-    for (final tx in filteredTransactions) {
+    for (final tx in filteredRevenueTransactions) {
+      final paymentDate = effectivePaymentDate(tx);
+      if (paymentDate == null) continue;
+      final realizedRevenue = realizedRevenueByPaymentStatus(tx);
+      if (realizedRevenue <= 0) continue;
       logs.add(
         ReportLogItem(
-          date: tx.createdAt,
+          date: paymentDate,
           title: tx.transactionCode,
-          subtitle: tx.customer?.name ?? 'Pelanggan',
-          amount: tx.totalPrice,
+          subtitle: tx.customer?.name ?? 'Pembayaran customer',
+          amount: realizedRevenue,
           kind: ReportLogKind.income,
           referenceId: tx.id,
         ),
@@ -162,13 +183,17 @@ ReportDetailState buildReportDetailState({
       );
     }
   } else {
-    for (final tx in filteredTransactions) {
+    for (final tx in filteredRevenueTransactions) {
+      final paymentDate = effectivePaymentDate(tx);
+      if (paymentDate == null) continue;
+      final realizedRevenue = realizedRevenueByPaymentStatus(tx);
+      if (realizedRevenue <= 0) continue;
       logs.add(
         ReportLogItem(
-          date: tx.createdAt,
+          date: paymentDate,
           title: tx.transactionCode,
           subtitle: tx.customer?.name ?? 'Pemasukan',
-          amount: tx.totalPrice,
+          amount: realizedRevenue,
           kind: ReportLogKind.income,
           referenceId: tx.id,
         ),

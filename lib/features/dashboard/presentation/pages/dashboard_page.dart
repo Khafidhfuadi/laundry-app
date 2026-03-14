@@ -15,6 +15,36 @@ class DashboardPage extends ConsumerStatefulWidget {
 }
 
 class _DashboardPageState extends ConsumerState<DashboardPage> {
+  double _realizedRevenueByPaymentStatus(
+    String paymentStatus,
+    double totalPrice,
+    double paidAmount,
+  ) {
+    if (paymentStatus == 'PAID') {
+      return totalPrice;
+    }
+    if (paymentStatus == 'PARTIAL') {
+      return paidAmount.clamp(0, totalPrice);
+    }
+    return 0;
+  }
+
+  DateTime? _effectivePaymentDate({
+    required String paymentStatus,
+    required double totalPrice,
+    required double paidAmount,
+    required DateTime createdAt,
+    DateTime? paymentReceivedAt,
+  }) {
+    final realizedRevenue = _realizedRevenueByPaymentStatus(
+      paymentStatus,
+      totalPrice,
+      paidAmount,
+    );
+    if (realizedRevenue <= 0) return null;
+    return paymentReceivedAt ?? createdAt;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -39,9 +69,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     );
 
     int trxHariIni = 0;
-    double pndpTotal = 0;
+    double omsetHariIni = 0;
+    double pendapatanHariIni = 0;
     int trxKemarin = 0;
-    double pndpKemarin = 0;
+    double omsetKemarin = 0;
+    double pendapatanKemarin = 0;
     int trxProses = 0;
     int trxSiapDikirim = 0;
     int trxTerlambat = 0;
@@ -57,11 +89,30 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       // Get recent 3 transactions
 
       for (var trx in transactions) {
+        final realizedRevenue = _realizedRevenueByPaymentStatus(
+          trx.paymentStatus,
+          trx.totalPrice,
+          trx.paidAmount,
+        );
+        final paymentDateRaw = _effectivePaymentDate(
+          paymentStatus: trx.paymentStatus,
+          totalPrice: trx.totalPrice,
+          paidAmount: trx.paidAmount,
+          createdAt: trx.createdAt,
+          paymentReceivedAt: trx.paymentReceivedAt,
+        );
         final trxDate = DateTime(
           trx.createdAt.year,
           trx.createdAt.month,
           trx.createdAt.day,
         );
+        final paymentDate = paymentDateRaw == null
+            ? null
+            : DateTime(
+                paymentDateRaw.year,
+                paymentDateRaw.month,
+                paymentDateRaw.day,
+              );
         final isOverdue =
             trx.estimatedCompletionDate.isBefore(now) &&
             trx.status != 'COMPLETED' &&
@@ -71,13 +122,19 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         // Today's metrics
         if (trxDate == today) {
           trxHariIni++;
-          pndpTotal += trx.totalPrice;
+          omsetHariIni += trx.totalPrice;
+        }
+        if (paymentDate == today) {
+          pendapatanHariIni += realizedRevenue;
         }
 
         // Yesterday's metrics
         if (trxDate == yesterday) {
           trxKemarin++;
-          pndpKemarin += trx.totalPrice;
+          omsetKemarin += trx.totalPrice;
+        }
+        if (paymentDate == yesterday) {
+          pendapatanKemarin += realizedRevenue;
         }
 
         // 7 days revenue map
@@ -100,14 +157,16 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     }
 
     final trxChange = pctChange(trxHariIni, trxKemarin);
-    final pndpChange = pctChange(pndpTotal, pndpKemarin);
+    final omsetChange = pctChange(omsetHariIni, omsetKemarin);
+    final pendapatanChange = pctChange(pendapatanHariIni, pendapatanKemarin);
 
     final formatter = NumberFormat.currency(
       locale: 'id_ID',
       symbol: 'Rp',
       decimalDigits: 0,
     );
-    String pndpHariIni = formatter.format(pndpTotal);
+    final omsetHariIniText = formatter.format(omsetHariIni);
+    final pendapatanHariIniText = formatter.format(pendapatanHariIni);
 
     double maxY = dailyRevenue.isNotEmpty
         ? dailyRevenue.reduce((curr, next) => curr > next ? curr : next)
@@ -324,13 +383,21 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   Expanded(
                     child: _buildSummaryCard(
                       title: 'OMSET\nHARI INI',
-                      value: pndpHariIni,
-                      change: pndpChange,
-                      isPositive: !pndpChange.startsWith('-'),
+                      value: omsetHariIniText,
+                      change: omsetChange,
+                      isPositive: !omsetChange.startsWith('-'),
                       icon: Icons.payments_outlined,
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 12),
+              _buildSummaryCard(
+                title: 'PENDAPATAN\nHARI INI',
+                value: pendapatanHariIniText,
+                change: pendapatanChange,
+                isPositive: !pendapatanChange.startsWith('-'),
+                icon: Icons.account_balance_wallet_outlined,
               ),
               // const SizedBox(height: 24),
 

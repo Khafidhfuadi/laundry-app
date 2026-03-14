@@ -57,6 +57,7 @@ class TransactionEntity {
   final String? perfumeId;
   final DateTime estimatedCompletionDate;
   final DateTime createdAt;
+  final DateTime? paymentReceivedAt;
   final DateTime? processedAt;
   final DateTime? readyAt;
   final DateTime? completedAt;
@@ -80,6 +81,7 @@ class TransactionEntity {
     this.perfumeId,
     required this.estimatedCompletionDate,
     required this.createdAt,
+    this.paymentReceivedAt,
     this.processedAt,
     this.readyAt,
     this.completedAt,
@@ -105,6 +107,9 @@ class TransactionEntity {
         json['estimated_completion_date'] as String,
       ).toLocal(),
       createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
+      paymentReceivedAt: json['payment_received_at'] != null
+          ? DateTime.parse(json['payment_received_at'] as String).toLocal()
+          : null,
       processedAt: json['processed_at'] != null
           ? DateTime.parse(json['processed_at'] as String).toLocal()
           : null,
@@ -147,6 +152,8 @@ class TransactionEntity {
           .toUtc()
           .toIso8601String(),
       'created_at': createdAt.toUtc().toIso8601String(),
+      if (paymentReceivedAt != null)
+        'payment_received_at': paymentReceivedAt!.toUtc().toIso8601String(),
       if (processedAt != null)
         'processed_at': processedAt!.toUtc().toIso8601String(),
       if (readyAt != null) 'ready_at': readyAt!.toUtc().toIso8601String(),

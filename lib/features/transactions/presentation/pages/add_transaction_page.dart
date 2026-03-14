@@ -1539,6 +1539,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
       estimatedCompletionDate: _estimatedCompletionDate,
       items: _items,
       createdAt: DateTime.now(),
+      paymentReceivedAt: paidAmount > 0 ? DateTime.now() : null,
     );
 
     final success = await ref

@@ -11,11 +11,18 @@ class TopServiceSummary {
 }
 
 class ReportSummary {
+  // Omset: nilai order saat transaksi dibuat.
   final double totalIncome;
+  // Pendapatan: uang yang benar-benar sudah dibayar customer.
+  final double totalRevenue;
   final double totalExpense;
+  // Laba/Rugi: pendapatan dikurangi pengeluaran.
   final double netProfit;
+  // Piutang: sisa tagihan yang belum dibayar.
+  final double totalReceivables;
   final int totalTransactions;
   final double incomeChangePercent;
+  final double revenueChangePercent;
   final double expenseChangePercent;
   final double netProfitChangePercent;
   final double transactionChangePercent;
@@ -32,10 +39,13 @@ class ReportSummary {
 
   const ReportSummary({
     required this.totalIncome,
+    required this.totalRevenue,
     required this.totalExpense,
     required this.netProfit,
+    required this.totalReceivables,
     required this.totalTransactions,
     required this.incomeChangePercent,
+    required this.revenueChangePercent,
     required this.expenseChangePercent,
     required this.netProfitChangePercent,
     required this.transactionChangePercent,
@@ -50,10 +60,13 @@ class ReportSummary {
   static ReportSummary empty() {
     return ReportSummary(
       totalIncome: 0,
+      totalRevenue: 0,
       totalExpense: 0,
       netProfit: 0,
+      totalReceivables: 0,
       totalTransactions: 0,
       incomeChangePercent: 0,
+      revenueChangePercent: 0,
       expenseChangePercent: 0,
       netProfitChangePercent: 0,
       transactionChangePercent: 0,

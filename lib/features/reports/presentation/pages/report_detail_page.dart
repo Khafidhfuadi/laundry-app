@@ -118,11 +118,11 @@ class _ReportDetailPageState extends ConsumerState<ReportDetailPage> {
   String _title() {
     switch (widget.type) {
       case ReportDetailType.income:
-        return 'Laporan Pemasukan';
+        return 'Laporan Pendapatan';
       case ReportDetailType.expense:
         return 'Laporan Pengeluaran';
       case ReportDetailType.netProfit:
-        return 'Laporan Laba Bersih';
+        return 'Laporan Laba / Rugi';
     }
   }
 

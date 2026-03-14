@@ -241,6 +241,15 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             baselineLabel: comparisonLabel,
           ),
           _buildStatCard(
+            'TOTAL PENDAPATAN',
+            fmt.format(summary.totalRevenue),
+            true,
+            false,
+            highlightValue: true,
+            changePercent: summary.revenueChangePercent,
+            baselineLabel: comparisonLabel,
+          ),
+          _buildStatCard(
             'TOTAL PENGELUARAN',
             fmt.format(summary.totalExpense),
             false,
@@ -249,20 +258,11 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             baselineLabel: comparisonLabel,
           ),
           _buildStatCard(
-            'TOTAL PENDAPATAN',
+            'LABA / RUGI',
             fmt.format(summary.netProfit),
             summary.netProfit >= 0,
             false,
-            highlightValue: true,
             changePercent: summary.netProfitChangePercent,
-            baselineLabel: comparisonLabel,
-          ),
-          _buildStatCard(
-            'TOTAL TRANSAKSI',
-            summary.totalTransactions.toString(),
-            true,
-            false,
-            changePercent: summary.transactionChangePercent,
             baselineLabel: comparisonLabel,
           ),
         ],
@@ -382,8 +382,8 @@ class _ReportPageState extends ConsumerState<ReportPage> {
           const SizedBox(height: 12),
           _buildDetailReportTile(
             icon: Icons.trending_up,
-            title: 'Laporan Pemasukan',
-            subtitle: 'Grafik dan log pemasukan',
+            title: 'Laporan Pendapatan',
+            subtitle: 'Grafik dan log pendapatan',
             iconColor: const Color(0xFF0F62FE),
             iconBgColor: const Color(0xFFDBEAFE),
             onTap: () => context.push('/reports/income'),
@@ -398,8 +398,8 @@ class _ReportPageState extends ConsumerState<ReportPage> {
           ),
           _buildDetailReportTile(
             icon: Icons.show_chart,
-            title: 'Laporan Laba Bersih',
-            subtitle: 'Grafik dan log laba bersih',
+            title: 'Laporan Laba / Rugi',
+            subtitle: 'Grafik dan log laba/rugi',
             iconColor: const Color(0xFF10B981),
             iconBgColor: const Color(0xFFD1FAE5),
             onTap: () => context.push('/reports/net-profit'),
@@ -520,7 +520,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
               const SizedBox(width: 12),
               Row(
                 children: [
-                  _buildLegendIndicator(const Color(0xFF0F62FE), 'Masuk'),
+                  _buildLegendIndicator(const Color(0xFF0F62FE), 'Pendapatan'),
                   const SizedBox(width: 12),
                   _buildLegendIndicator(const Color(0xFFFDA4AF), 'Keluar'),
                 ],
@@ -558,7 +558,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                         startOffset + group.x,
                         daysCount,
                       );
-                      final type = rodIndex == 0 ? 'Masuk' : 'Keluar';
+                      final type = rodIndex == 0 ? 'Pendapatan' : 'Keluar';
                       final value = rod.toY * 1000;
                       return BarTooltipItem(
                         '$label\n$type: ${formatter.format(value)}',
