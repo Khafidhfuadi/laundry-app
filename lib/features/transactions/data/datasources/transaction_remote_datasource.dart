@@ -46,6 +46,23 @@ class TransactionRemoteDatasourceImpl implements TransactionRemoteDatasource {
     return copy;
   }
 
+  Map<String, dynamic> _withoutRefundColumns(Map<String, dynamic> payload) {
+    final copy = Map<String, dynamic>.from(payload);
+    copy.remove('refund_amount');
+    copy.remove('refund_at');
+    return copy;
+  }
+
+  Map<String, dynamic> _withoutUnsupportedColumns(
+    Map<String, dynamic> payload,
+  ) {
+    final copy = Map<String, dynamic>.from(payload);
+    copy.remove('payment_received_at');
+    copy.remove('refund_amount');
+    copy.remove('refund_at');
+    return copy;
+  }
+
   @override
   Future<List<TransactionEntity>> getTransactions({
     String? status,
@@ -123,6 +140,13 @@ class TransactionRemoteDatasourceImpl implements TransactionRemoteDatasource {
             .insert(_withoutPaymentReceivedAt(payload))
             .select()
             .single();
+      } else if (message.contains('refund_amount') ||
+          message.contains('refund_at')) {
+        headerResponse = await supabaseClient
+            .from('transactions')
+            .insert(_withoutRefundColumns(payload))
+            .select()
+            .single();
       } else {
         rethrow;
       }
@@ -149,6 +173,7 @@ class TransactionRemoteDatasourceImpl implements TransactionRemoteDatasource {
     String id,
     String newStatus,
   ) async {
+    final tx = await getTransactionById(id);
     final Map<String, dynamic> updates = {'status': newStatus};
     final now = DateTime.now().toUtc().toIso8601String();
 
@@ -158,9 +183,32 @@ class TransactionRemoteDatasourceImpl implements TransactionRemoteDatasource {
       updates['ready_at'] = now;
     } else if (newStatus == 'COMPLETED' || newStatus == 'PICKED_UP') {
       updates['completed_at'] = now;
+    } else if (newStatus == 'CANCELLED') {
+      final refundableAmount = tx.paidAmount.clamp(0, double.infinity);
+      if (refundableAmount > 0) {
+        updates['refund_amount'] = refundableAmount;
+        updates['refund_at'] = now;
+      }
     }
 
-    await supabaseClient.from('transactions').update(updates).eq('id', id);
+    try {
+      await supabaseClient.from('transactions').update(updates).eq('id', id);
+    } on PostgrestException catch (e) {
+      final message = e.message.toLowerCase();
+      if (message.contains('refund_amount') || message.contains('refund_at')) {
+        await supabaseClient
+            .from('transactions')
+            .update(_withoutRefundColumns(updates))
+            .eq('id', id);
+      } else if (message.contains('payment_received_at')) {
+        await supabaseClient
+            .from('transactions')
+            .update(_withoutUnsupportedColumns(updates))
+            .eq('id', id);
+      } else {
+        rethrow;
+      }
+    }
 
     return getTransactionById(id);
   }
@@ -194,6 +242,12 @@ class TransactionRemoteDatasourceImpl implements TransactionRemoteDatasource {
         await supabaseClient
             .from('transactions')
             .update(_withoutPaymentReceivedAt(updates))
+            .eq('id', id);
+      } else if (message.contains('refund_amount') ||
+          message.contains('refund_at')) {
+        await supabaseClient
+            .from('transactions')
+            .update(_withoutRefundColumns(updates))
             .eq('id', id);
       } else {
         rethrow;

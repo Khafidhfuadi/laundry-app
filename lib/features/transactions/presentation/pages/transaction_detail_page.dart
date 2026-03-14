@@ -163,8 +163,10 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Batalkan Pesanan?'),
-        content: const Text(
-          'Pesanan yang dibatalkan tidak dapat dikembalikan. Lanjutkan?',
+        content: Text(
+          trx.paidAmount > 0
+              ? 'Pesanan yang dibatalkan tidak dapat dikembalikan. Pembayaran yang sudah masuk akan dicatat sebagai refund. Lanjutkan?'
+              : 'Pesanan yang dibatalkan tidak dapat dikembalikan. Lanjutkan?',
         ),
         actions: [
           TextButton(

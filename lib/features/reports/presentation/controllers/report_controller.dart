@@ -38,20 +38,25 @@ class ReportController extends AsyncNotifier<ReportSummary> {
   late TransactionRemoteDatasource _txDs;
   late ExpenseRemoteDatasource _expDs;
 
-  double _realizedRevenueByPaymentStatus(TransactionEntity transaction) {
-    if (transaction.paymentStatus == 'PAID') {
-      return transaction.totalPrice;
-    }
-    if (transaction.paymentStatus == 'PARTIAL') {
-      return transaction.paidAmount.clamp(0, transaction.totalPrice);
-    }
-    return 0;
+  double _paymentInflowAmount(TransactionEntity transaction) {
+    return transaction.paidAmount.clamp(0, transaction.totalPrice);
+  }
+
+  double _refundOutflowAmount(TransactionEntity transaction) {
+    final inflow = _paymentInflowAmount(transaction);
+    return transaction.refundAmount.clamp(0, inflow);
   }
 
   DateTime? _effectivePaymentDate(TransactionEntity transaction) {
-    final realizedRevenue = _realizedRevenueByPaymentStatus(transaction);
-    if (realizedRevenue <= 0) return null;
+    final paymentInflow = _paymentInflowAmount(transaction);
+    if (paymentInflow <= 0) return null;
     return transaction.paymentReceivedAt ?? transaction.createdAt;
+  }
+
+  DateTime? _effectiveRefundDate(TransactionEntity transaction) {
+    final refund = _refundOutflowAmount(transaction);
+    if (refund <= 0) return null;
+    return transaction.refundAt ?? transaction.createdAt;
   }
 
   @override
@@ -125,6 +130,12 @@ class ReportController extends AsyncNotifier<ReportSummary> {
         final d = asDateOnly(paymentDate);
         return isInRange(d, currentStartDate, currentEndDate);
       }).toList();
+      final refundTransactions = allTransactions.where((t) {
+        final refundDate = _effectiveRefundDate(t);
+        if (refundDate == null) return false;
+        final d = asDateOnly(refundDate);
+        return isInRange(d, currentStartDate, currentEndDate);
+      }).toList();
       final expenses = allExpenses.where((e) {
         final d = asDateOnly(e.expenseDate);
         return isInRange(d, currentStartDate, currentEndDate);
@@ -141,6 +152,12 @@ class ReportController extends AsyncNotifier<ReportSummary> {
         final d = asDateOnly(paymentDate);
         return isInRange(d, previousStartDate, previousEndDate);
       }).toList();
+      final previousRefundTransactions = allTransactions.where((t) {
+        final refundDate = _effectiveRefundDate(t);
+        if (refundDate == null) return false;
+        final d = asDateOnly(refundDate);
+        return isInRange(d, previousStartDate, previousEndDate);
+      }).toList();
       final previousExpenses = allExpenses.where((e) {
         final d = asDateOnly(e.expenseDate);
         return isInRange(d, previousStartDate, previousEndDate);
@@ -151,15 +168,19 @@ class ReportController extends AsyncNotifier<ReportSummary> {
       double totalRevenue = 0;
       double totalReceivables = 0;
       for (final t in omsetTransactions) {
-        final realizedRevenue = _realizedRevenueByPaymentStatus(t);
         totalIncome += t.totalPrice;
-        totalReceivables += (t.totalPrice - realizedRevenue).clamp(
+        if (t.status == 'CANCELLED') continue;
+        final paymentInflow = _paymentInflowAmount(t);
+        totalReceivables += (t.totalPrice - paymentInflow).clamp(
           0,
           double.infinity,
         );
       }
       for (final t in revenueTransactions) {
-        totalRevenue += _realizedRevenueByPaymentStatus(t);
+        totalRevenue += _paymentInflowAmount(t);
+      }
+      for (final t in refundTransactions) {
+        totalRevenue -= _refundOutflowAmount(t);
       }
 
       // --- Ringkasan expense ---
@@ -178,7 +199,10 @@ class ReportController extends AsyncNotifier<ReportSummary> {
         previousIncome += t.totalPrice;
       }
       for (final t in previousRevenueTransactions) {
-        previousRevenue += _realizedRevenueByPaymentStatus(t);
+        previousRevenue += _paymentInflowAmount(t);
+      }
+      for (final t in previousRefundTransactions) {
+        previousRevenue -= _refundOutflowAmount(t);
       }
       double previousExpense = 0;
       for (final e in previousExpenses) {
@@ -214,8 +238,18 @@ class ReportController extends AsyncNotifier<ReportSummary> {
         final trxDay = asDateOnly(paymentDate);
         final diff = today.difference(trxDay).inDays;
         if (diff >= 0 && diff < daysBack) {
-          final realizedRevenue = _realizedRevenueByPaymentStatus(t);
-          dailyIncome[(daysBack - 1) - diff] += realizedRevenue / 1000;
+          final inflow = _paymentInflowAmount(t);
+          dailyIncome[(daysBack - 1) - diff] += inflow / 1000;
+        }
+      }
+      for (final t in refundTransactions) {
+        final refundDate = _effectiveRefundDate(t);
+        if (refundDate == null) continue;
+        final refundDay = asDateOnly(refundDate);
+        final diff = today.difference(refundDay).inDays;
+        if (diff >= 0 && diff < daysBack) {
+          final refund = _refundOutflowAmount(t);
+          dailyIncome[(daysBack - 1) - diff] -= refund / 1000;
         }
       }
       for (final e in expenses) {

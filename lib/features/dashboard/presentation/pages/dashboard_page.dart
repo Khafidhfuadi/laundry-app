@@ -15,34 +15,40 @@ class DashboardPage extends ConsumerStatefulWidget {
 }
 
 class _DashboardPageState extends ConsumerState<DashboardPage> {
-  double _realizedRevenueByPaymentStatus(
-    String paymentStatus,
-    double totalPrice,
-    double paidAmount,
-  ) {
-    if (paymentStatus == 'PAID') {
-      return totalPrice;
-    }
-    if (paymentStatus == 'PARTIAL') {
-      return paidAmount.clamp(0, totalPrice);
-    }
-    return 0;
+  double _paymentInflowAmount(double totalPrice, double paidAmount) {
+    return paidAmount.clamp(0, totalPrice);
   }
 
   DateTime? _effectivePaymentDate({
-    required String paymentStatus,
     required double totalPrice,
     required double paidAmount,
     required DateTime createdAt,
     DateTime? paymentReceivedAt,
   }) {
-    final realizedRevenue = _realizedRevenueByPaymentStatus(
-      paymentStatus,
-      totalPrice,
-      paidAmount,
-    );
-    if (realizedRevenue <= 0) return null;
+    final inflow = _paymentInflowAmount(totalPrice, paidAmount);
+    if (inflow <= 0) return null;
     return paymentReceivedAt ?? createdAt;
+  }
+
+  double _refundOutflowAmount(
+    double totalPrice,
+    double paidAmount,
+    double refundAmount,
+  ) {
+    final inflow = _paymentInflowAmount(totalPrice, paidAmount);
+    return refundAmount.clamp(0, inflow);
+  }
+
+  DateTime? _effectiveRefundDate({
+    required double totalPrice,
+    required double paidAmount,
+    required double refundAmount,
+    required DateTime createdAt,
+    DateTime? refundAt,
+  }) {
+    final refund = _refundOutflowAmount(totalPrice, paidAmount, refundAmount);
+    if (refund <= 0) return null;
+    return refundAt ?? createdAt;
   }
 
   @override
@@ -89,17 +95,27 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       // Get recent 3 transactions
 
       for (var trx in transactions) {
-        final realizedRevenue = _realizedRevenueByPaymentStatus(
-          trx.paymentStatus,
+        final paymentInflow = _paymentInflowAmount(
           trx.totalPrice,
           trx.paidAmount,
         );
+        final refundOutflow = _refundOutflowAmount(
+          trx.totalPrice,
+          trx.paidAmount,
+          trx.refundAmount,
+        );
         final paymentDateRaw = _effectivePaymentDate(
-          paymentStatus: trx.paymentStatus,
           totalPrice: trx.totalPrice,
           paidAmount: trx.paidAmount,
           createdAt: trx.createdAt,
           paymentReceivedAt: trx.paymentReceivedAt,
+        );
+        final refundDateRaw = _effectiveRefundDate(
+          totalPrice: trx.totalPrice,
+          paidAmount: trx.paidAmount,
+          refundAmount: trx.refundAmount,
+          createdAt: trx.createdAt,
+          refundAt: trx.refundAt,
         );
         final trxDate = DateTime(
           trx.createdAt.year,
@@ -113,6 +129,13 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 paymentDateRaw.month,
                 paymentDateRaw.day,
               );
+        final refundDate = refundDateRaw == null
+            ? null
+            : DateTime(
+                refundDateRaw.year,
+                refundDateRaw.month,
+                refundDateRaw.day,
+              );
         final isOverdue =
             trx.estimatedCompletionDate.isBefore(now) &&
             trx.status != 'COMPLETED' &&
@@ -125,7 +148,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           omsetHariIni += trx.totalPrice;
         }
         if (paymentDate == today) {
-          pendapatanHariIni += realizedRevenue;
+          pendapatanHariIni += paymentInflow;
+        }
+        if (refundDate == today) {
+          pendapatanHariIni -= refundOutflow;
         }
 
         // Yesterday's metrics
@@ -134,7 +160,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           omsetKemarin += trx.totalPrice;
         }
         if (paymentDate == yesterday) {
-          pendapatanKemarin += realizedRevenue;
+          pendapatanKemarin += paymentInflow;
+        }
+        if (refundDate == yesterday) {
+          pendapatanKemarin -= refundOutflow;
         }
 
         // 7 days revenue map

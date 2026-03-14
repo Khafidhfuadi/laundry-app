@@ -76,20 +76,25 @@ ReportDetailState buildReportDetailState({
   required List<TransactionEntity> transactions,
   required List<ExpenseEntity> expenses,
 }) {
-  double realizedRevenueByPaymentStatus(TransactionEntity transaction) {
-    if (transaction.paymentStatus == 'PAID') {
-      return transaction.totalPrice;
-    }
-    if (transaction.paymentStatus == 'PARTIAL') {
-      return transaction.paidAmount.clamp(0, transaction.totalPrice);
-    }
-    return 0;
+  double paymentInflowAmount(TransactionEntity transaction) {
+    return transaction.paidAmount.clamp(0, transaction.totalPrice);
   }
 
   DateTime? effectivePaymentDate(TransactionEntity transaction) {
-    final realizedRevenue = realizedRevenueByPaymentStatus(transaction);
-    if (realizedRevenue <= 0) return null;
+    final inflow = paymentInflowAmount(transaction);
+    if (inflow <= 0) return null;
     return transaction.paymentReceivedAt ?? transaction.createdAt;
+  }
+
+  double refundOutflowAmount(TransactionEntity transaction) {
+    final inflow = paymentInflowAmount(transaction);
+    return transaction.refundAmount.clamp(0, inflow);
+  }
+
+  DateTime? effectiveRefundDate(TransactionEntity transaction) {
+    final refund = refundOutflowAmount(transaction);
+    if (refund <= 0) return null;
+    return transaction.refundAt ?? transaction.createdAt;
   }
 
   DateTime asDateOnly(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
@@ -109,6 +114,12 @@ ReportDetailState buildReportDetailState({
     final d = asDateOnly(paymentDate);
     return isInRange(d, normalizedStart, normalizedEnd);
   }).toList();
+  final filteredRefundTransactions = transactions.where((t) {
+    final refundDate = effectiveRefundDate(t);
+    if (refundDate == null) return false;
+    final d = asDateOnly(refundDate);
+    return isInRange(d, normalizedStart, normalizedEnd);
+  }).toList();
   final filteredExpenses = expenses.where((e) {
     final d = asDateOnly(e.expenseDate);
     return isInRange(d, normalizedStart, normalizedEnd);
@@ -126,8 +137,13 @@ ReportDetailState buildReportDetailState({
     final paymentDate = effectivePaymentDate(tx);
     if (paymentDate == null) continue;
     final d = asDateOnly(paymentDate);
-    incomeByDate[d] =
-        (incomeByDate[d] ?? 0) + realizedRevenueByPaymentStatus(tx);
+    incomeByDate[d] = (incomeByDate[d] ?? 0) + paymentInflowAmount(tx);
+  }
+  for (final tx in filteredRefundTransactions) {
+    final refundDate = effectiveRefundDate(tx);
+    if (refundDate == null) continue;
+    final d = asDateOnly(refundDate);
+    incomeByDate[d] = (incomeByDate[d] ?? 0) - refundOutflowAmount(tx);
   }
   for (final exp in filteredExpenses) {
     final d = asDateOnly(exp.expenseDate);
@@ -159,7 +175,10 @@ ReportDetailState buildReportDetailState({
 
   double totalIncome = 0;
   for (final tx in filteredRevenueTransactions) {
-    totalIncome += realizedRevenueByPaymentStatus(tx);
+    totalIncome += paymentInflowAmount(tx);
+  }
+  for (final tx in filteredRefundTransactions) {
+    totalIncome -= refundOutflowAmount(tx);
   }
 
   double totalExpense = 0;
@@ -185,15 +204,31 @@ ReportDetailState buildReportDetailState({
     for (final tx in filteredRevenueTransactions) {
       final paymentDate = effectivePaymentDate(tx);
       if (paymentDate == null) continue;
-      final realizedRevenue = realizedRevenueByPaymentStatus(tx);
-      if (realizedRevenue <= 0) continue;
+      final inflow = paymentInflowAmount(tx);
+      if (inflow <= 0) continue;
       logs.add(
         ReportLogItem(
           date: paymentDate,
           title: tx.transactionCode,
           subtitle: tx.customer?.name ?? 'Pembayaran customer',
-          amount: realizedRevenue,
+          amount: inflow,
           kind: ReportLogKind.income,
+          referenceId: tx.id,
+        ),
+      );
+    }
+    for (final tx in filteredRefundTransactions) {
+      final refundDate = effectiveRefundDate(tx);
+      if (refundDate == null) continue;
+      final refund = refundOutflowAmount(tx);
+      if (refund <= 0) continue;
+      logs.add(
+        ReportLogItem(
+          date: refundDate,
+          title: 'Refund ${tx.transactionCode}',
+          subtitle: tx.customer?.name ?? 'Refund customer',
+          amount: refund,
+          kind: ReportLogKind.expense,
           referenceId: tx.id,
         ),
       );
@@ -215,15 +250,31 @@ ReportDetailState buildReportDetailState({
     for (final tx in filteredRevenueTransactions) {
       final paymentDate = effectivePaymentDate(tx);
       if (paymentDate == null) continue;
-      final realizedRevenue = realizedRevenueByPaymentStatus(tx);
-      if (realizedRevenue <= 0) continue;
+      final inflow = paymentInflowAmount(tx);
+      if (inflow <= 0) continue;
       logs.add(
         ReportLogItem(
           date: paymentDate,
           title: tx.transactionCode,
           subtitle: tx.customer?.name ?? 'Pemasukan',
-          amount: realizedRevenue,
+          amount: inflow,
           kind: ReportLogKind.income,
+          referenceId: tx.id,
+        ),
+      );
+    }
+    for (final tx in filteredRefundTransactions) {
+      final refundDate = effectiveRefundDate(tx);
+      if (refundDate == null) continue;
+      final refund = refundOutflowAmount(tx);
+      if (refund <= 0) continue;
+      logs.add(
+        ReportLogItem(
+          date: refundDate,
+          title: 'Refund ${tx.transactionCode}',
+          subtitle: tx.customer?.name ?? 'Refund customer',
+          amount: refund,
+          kind: ReportLogKind.expense,
           referenceId: tx.id,
         ),
       );

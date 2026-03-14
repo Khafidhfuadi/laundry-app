@@ -83,13 +83,13 @@ class ReportCustomerInsightController
   }
 
   double _realizedRevenueByPaymentStatus(TransactionEntity transaction) {
-    if (transaction.paymentStatus == 'PAID') {
-      return transaction.totalPrice;
-    }
-    if (transaction.paymentStatus == 'PARTIAL') {
-      return transaction.paidAmount.clamp(0, transaction.totalPrice);
-    }
-    return 0;
+    final paidInflow = transaction.paidAmount
+        .clamp(0, transaction.totalPrice)
+        .toDouble();
+    final refundOutflow = transaction.refundAmount
+        .clamp(0, paidInflow)
+        .toDouble();
+    return paidInflow - refundOutflow;
   }
 
   Future<void> loadInsight({
