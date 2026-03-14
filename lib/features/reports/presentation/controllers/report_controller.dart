@@ -38,6 +38,10 @@ class ReportController extends AsyncNotifier<ReportSummary> {
   late TransactionRemoteDatasource _txDs;
   late ExpenseRemoteDatasource _expDs;
 
+  bool _isCancelledStatus(String status) {
+    return status == 'CANCELLED' || status == 'CANCELED';
+  }
+
   double _paymentInflowAmount(TransactionEntity transaction) {
     return transaction.paidAmount.clamp(0, transaction.totalPrice);
   }
@@ -121,6 +125,7 @@ class ReportController extends AsyncNotifier<ReportSummary> {
 
       // Filter data periode saat ini
       final omsetTransactions = allTransactions.where((t) {
+        if (_isCancelledStatus(t.status)) return false;
         final d = asDateOnly(t.createdAt);
         return isInRange(d, currentStartDate, currentEndDate);
       }).toList();
@@ -143,6 +148,7 @@ class ReportController extends AsyncNotifier<ReportSummary> {
 
       // Filter data periode sebelumnya untuk pembanding
       final previousOmsetTransactions = allTransactions.where((t) {
+        if (_isCancelledStatus(t.status)) return false;
         final d = asDateOnly(t.createdAt);
         return isInRange(d, previousStartDate, previousEndDate);
       }).toList();
@@ -169,7 +175,6 @@ class ReportController extends AsyncNotifier<ReportSummary> {
       double totalReceivables = 0;
       for (final t in omsetTransactions) {
         totalIncome += t.totalPrice;
-        if (t.status == 'CANCELLED') continue;
         final paymentInflow = _paymentInflowAmount(t);
         totalReceivables += (t.totalPrice - paymentInflow).clamp(
           0,

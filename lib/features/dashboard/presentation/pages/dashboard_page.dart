@@ -15,6 +15,10 @@ class DashboardPage extends ConsumerStatefulWidget {
 }
 
 class _DashboardPageState extends ConsumerState<DashboardPage> {
+  bool _isCancelledStatus(String status) {
+    return status == 'CANCELLED' || status == 'CANCELED';
+  }
+
   double _paymentInflowAmount(double totalPrice, double paidAmount) {
     return paidAmount.clamp(0, totalPrice);
   }
@@ -145,7 +149,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         // Today's metrics
         if (trxDate == today) {
           trxHariIni++;
-          omsetHariIni += trx.totalPrice;
+          if (!_isCancelledStatus(trx.status)) {
+            omsetHariIni += trx.totalPrice;
+          }
         }
         if (paymentDate == today) {
           pendapatanHariIni += paymentInflow;
@@ -157,7 +163,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         // Yesterday's metrics
         if (trxDate == yesterday) {
           trxKemarin++;
-          omsetKemarin += trx.totalPrice;
+          if (!_isCancelledStatus(trx.status)) {
+            omsetKemarin += trx.totalPrice;
+          }
         }
         if (paymentDate == yesterday) {
           pendapatanKemarin += paymentInflow;
@@ -169,7 +177,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         // 7 days revenue map
         final diff = today.difference(trxDate).inDays;
         if (diff >= 0 && diff < 7) {
-          dailyRevenue[6 - diff] += (trx.totalPrice / 1000); // In thousands
+          if (!_isCancelledStatus(trx.status)) {
+            dailyRevenue[6 - diff] += (trx.totalPrice / 1000); // In thousands
+          }
         }
 
         if (trx.status == 'PROCESS') trxProses++;

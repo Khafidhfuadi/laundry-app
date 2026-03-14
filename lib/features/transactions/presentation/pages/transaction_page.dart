@@ -49,7 +49,11 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
     List<TransactionEntity> filtered = allTransactions;
 
     // Status Filter
-    if (_selectedFilter == 'Proses') {
+    if (_selectedFilter == 'Antrian') {
+      filtered = filtered
+          .where((t) => t.status == 'PROCESS' || t.status == 'READY')
+          .toList();
+    } else if (_selectedFilter == 'Proses') {
       filtered = filtered.where((t) => t.status == 'PROCESS').toList();
     } else if (_selectedFilter == 'Siap Dikirim') {
       filtered = filtered.where((t) => t.status == 'READY').toList();
@@ -77,7 +81,9 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
 
   int _getFilterCount(String filter, List<TransactionEntity> allTransactions) {
     if (filter == 'Antrian') {
-      return allTransactions.length;
+      return allTransactions
+          .where((t) => t.status == 'PROCESS' || t.status == 'READY')
+          .length;
     }
     if (filter == 'Proses') {
       return allTransactions.where((t) => t.status == 'PROCESS').length;

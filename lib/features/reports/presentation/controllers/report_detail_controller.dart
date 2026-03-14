@@ -76,6 +76,10 @@ ReportDetailState buildReportDetailState({
   required List<TransactionEntity> transactions,
   required List<ExpenseEntity> expenses,
 }) {
+  bool isCancelledStatus(String status) {
+    return status == 'CANCELLED' || status == 'CANCELED';
+  }
+
   double paymentInflowAmount(TransactionEntity transaction) {
     return transaction.paidAmount.clamp(0, transaction.totalPrice);
   }
@@ -105,6 +109,7 @@ ReportDetailState buildReportDetailState({
   final normalizedEnd = asDateOnly(endDate);
 
   final filteredOmsetTransactions = transactions.where((t) {
+    if (isCancelledStatus(t.status)) return false;
     final d = asDateOnly(t.createdAt);
     return isInRange(d, normalizedStart, normalizedEnd);
   }).toList();

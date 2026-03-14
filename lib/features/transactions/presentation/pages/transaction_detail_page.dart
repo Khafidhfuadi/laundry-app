@@ -21,6 +21,10 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
   bool _isUpdatingStatus = false;
   bool _isSendingWhatsApp = false;
 
+  bool _isCancelledStatus(String status) {
+    return status == 'CANCELLED' || status == 'CANCELED';
+  }
+
   final _formatter = NumberFormat.currency(
     locale: 'id_ID',
     symbol: 'Rp ',
@@ -192,10 +196,10 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
 
     if (mounted) {
       if (success) {
+        ref.invalidate(transactionDetailProvider(widget.transactionId));
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Pesanan berhasil dibatalkan')),
         );
-        context.pop();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -320,8 +324,8 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
     final bool isFinished =
         trx.status == 'COMPLETED' ||
         trx.status == 'PICKED_UP' ||
-        trx.status == 'CANCELLED';
-    final bool isCancelled = trx.status == 'CANCELLED';
+        _isCancelledStatus(trx.status);
+    final bool isCancelled = _isCancelledStatus(trx.status);
 
     return Column(
       children: [
@@ -416,7 +420,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
                   },
                 ),
               ),
-              if (trx.status != 'CANCELLED' &&
+              if (!_isCancelledStatus(trx.status) &&
                   trx.status != 'COMPLETED' &&
                   trx.status != 'PICKED_UP') ...[
                 const SizedBox(width: 8),
@@ -474,7 +478,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
   // ─── STATUS BANNER ────────────────────────────────────────────────────
 
   Widget _buildStatusBanner(TransactionEntity trx) {
-    if (trx.status == 'CANCELLED') {
+    if (_isCancelledStatus(trx.status)) {
       return Container(
         margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),

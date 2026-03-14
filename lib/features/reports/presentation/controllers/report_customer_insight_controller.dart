@@ -70,6 +70,10 @@ class ReportCustomerInsightController
     extends AsyncNotifier<ReportCustomerInsightState> {
   late TransactionRemoteDatasource _txDs;
 
+  bool _isCancelledStatus(String status) {
+    return status == 'CANCELLED' || status == 'CANCELED';
+  }
+
   @override
   FutureOr<ReportCustomerInsightState> build() async {
     _txDs = ref.watch(_reportCustomerInsightDatasourceProvider);
@@ -105,6 +109,7 @@ class ReportCustomerInsightController
       final allTransactions = await _txDs.getTransactions(outletId: outletId);
 
       final transactionsInRange = allTransactions.where((tx) {
+        if (_isCancelledStatus(tx.status)) return false;
         final d = _asDateOnly(tx.createdAt);
         return _isInRange(d, normalizedStart, normalizedEnd);
       }).toList();

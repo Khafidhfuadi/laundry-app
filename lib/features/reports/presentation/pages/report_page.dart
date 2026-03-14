@@ -259,7 +259,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             true,
             false,
             infoDescription:
-                'Omset adalah total nilai order yang dibuat customer pada rentang waktu terpilih, terlepas dari status pembayarannya.',
+                'Omset adalah total nilai order valid (tidak dibatalkan) pada rentang waktu terpilih.',
             changePercent: summary.incomeChangePercent,
             baselineLabel: comparisonLabel,
           ),
