@@ -2284,8 +2284,8 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
               padding: EdgeInsets.symmetric(vertical: 16),
               child: Divider(color: Color(0xFFE2E8F0)),
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
                   'Status Pembayaran',
@@ -2294,42 +2294,30 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                SizedBox(
-                  width: 140,
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      isExpanded: true,
-                      value: _paymentStatus,
-                      style: const TextStyle(
-                        color: Color(0xFF0F62FE),
-                        fontWeight: FontWeight.bold,
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildPaymentStatusPill(
+                        label: 'Belum Bayar',
+                        value: 'UNPAID',
                       ),
-                      icon: const Icon(
-                        Icons.keyboard_arrow_down,
-                        color: Color(0xFF0F62FE),
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'UNPAID',
-                          child: Text('Belum Bayar'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'PARTIAL',
-                          child: Text('DP / Sebagian'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'PAID',
-                          child: Text('Lunas Langsung'),
-                        ),
-                      ],
-                      onChanged: (v) => setState(() {
-                        _paymentStatus = v!;
-                        if (_paymentStatus != 'PARTIAL') {
-                          _paidAmountController.clear();
-                        }
-                      }),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildPaymentStatusPill(
+                        label: 'DP / Sebagian',
+                        value: 'PARTIAL',
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildPaymentStatusPill(
+                        label: 'Lunas',
+                        value: 'PAID',
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -2387,6 +2375,47 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentStatusPill({
+    required String label,
+    required String value,
+  }) {
+    final isSelected = _paymentStatus == value;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _paymentStatus = value;
+          if (_paymentStatus != 'PARTIAL') {
+            _paidAmountController.clear();
+          }
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFFEEF2FF) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF0F62FE) : const Color(0xFFE2E8F0),
+            width: isSelected ? 1.4 : 1,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: isSelected ? const Color(0xFF0F62FE) : const Color(0xFF64748B),
+            ),
+          ),
         ),
       ),
     );

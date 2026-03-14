@@ -465,6 +465,14 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             iconBgColor: const Color(0xFFD1FAE5),
             onTap: () => context.push('/reports/net-profit'),
           ),
+          _buildDetailReportTile(
+            icon: Icons.people_outline,
+            title: 'Insight Customer',
+            subtitle: 'Ringkasan customer aktif, baru, dan top customer',
+            iconColor: const Color(0xFF6366F1),
+            iconBgColor: const Color(0xFFE0E7FF),
+            onTap: () => context.push('/reports/customer-insight'),
+          ),
         ],
       ),
     );

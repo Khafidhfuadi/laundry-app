@@ -18,6 +18,7 @@ import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/reports/presentation/pages/report_page.dart';
 import '../../features/reports/presentation/pages/report_detail_page.dart';
+import '../../features/reports/presentation/pages/report_customer_insight_page.dart';
 import '../../features/reports/domain/entities/report_detail.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -129,6 +130,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/reports/net-profit',
         builder: (context, state) =>
             const ReportDetailPage(type: ReportDetailType.netProfit),
+      ),
+      GoRoute(
+        path: '/reports/customer-insight',
+        builder: (context, state) => const ReportCustomerInsightPage(),
       ),
       GoRoute(
         path: '/profile',
