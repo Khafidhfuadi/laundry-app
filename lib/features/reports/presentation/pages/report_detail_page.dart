@@ -370,6 +370,12 @@ class _ReportDetailPageState extends ConsumerState<ReportDetailPage> {
     final maxY = maxValue + padding;
     final minY = minValue < 0 ? minValue - padding : 0.0;
     final interval = values.length <= 8 ? 1 : (values.length / 6).ceil();
+    final yInterval = ((maxY - minY) / 4).clamp(1.0, double.infinity);
+    final formatter = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp',
+      decimalDigits: 0,
+    );
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -383,7 +389,37 @@ class _ReportDetailPageState extends ConsumerState<ReportDetailPage> {
           LineChartData(
             minY: minY.toDouble(),
             maxY: maxY.toDouble(),
-            lineTouchData: LineTouchData(enabled: false),
+            lineTouchData: LineTouchData(
+              enabled: true,
+              handleBuiltInTouches: true,
+              touchTooltipData: LineTouchTooltipData(
+                tooltipPadding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                getTooltipItems: (touchedSpots) {
+                  return touchedSpots.map((spot) {
+                    final index = spot.x.toInt();
+                    if (index < 0 || index >= detail.seriesPoints.length) {
+                      return null;
+                    }
+                    final point = detail.seriesPoints[index];
+                    final dateLabel = DateFormat(
+                      'dd MMM yyyy',
+                      'id_ID',
+                    ).format(point.date);
+                    return LineTooltipItem(
+                      '$dateLabel\n${formatter.format(spot.y)}',
+                      const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 11,
+                      ),
+                    );
+                  }).toList();
+                },
+              ),
+            ),
             gridData: FlGridData(
               show: true,
               drawVerticalLine: false,
@@ -397,8 +433,21 @@ class _ReportDetailPageState extends ConsumerState<ReportDetailPage> {
             borderData: FlBorderData(show: false),
             titlesData: FlTitlesData(
               show: true,
-              leftTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 48,
+                  interval: yInterval.toDouble(),
+                  getTitlesWidget: (value, meta) {
+                    return Text(
+                      _formatYAxis(value),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: Color(0xFF94A3B8),
+                      ),
+                    );
+                  },
+                ),
               ),
               rightTitles: const AxisTitles(
                 sideTitles: SideTitles(showTitles: false),
@@ -519,5 +568,19 @@ class _ReportDetailPageState extends ConsumerState<ReportDetailPage> {
         ],
       ),
     );
+  }
+
+  String _formatYAxis(double value) {
+    final abs = value.abs();
+    if (abs >= 1000000000) {
+      return '${(value / 1000000000).toStringAsFixed(1)}M';
+    }
+    if (abs >= 1000000) {
+      return '${(value / 1000000).toStringAsFixed(1)}jt';
+    }
+    if (abs >= 1000) {
+      return '${(value / 1000).toStringAsFixed(0)}rb';
+    }
+    return value.toStringAsFixed(0);
   }
 }

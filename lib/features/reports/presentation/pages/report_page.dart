@@ -489,6 +489,12 @@ class _ReportPageState extends ConsumerState<ReportPage> {
         : 0.0;
     final maxY = (maxIncome > maxExpense ? maxIncome : maxExpense) * 1.2;
     final effectiveMaxY = maxY < 5 ? 20.0 : maxY;
+    final yInterval = (effectiveMaxY / 4).clamp(1.0, double.infinity);
+    final formatter = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp',
+      decimalDigits: 0,
+    );
 
     // Tampilkan maksimal 30 batang (atau sesuai daysCount)
     final displayCount = daysCount > 30 ? 30 : daysCount;
@@ -541,7 +547,31 @@ class _ReportPageState extends ConsumerState<ReportPage> {
               BarChartData(
                 alignment: BarChartAlignment.spaceAround,
                 maxY: effectiveMaxY,
-                barTouchData: BarTouchData(enabled: false),
+                barTouchData: BarTouchData(
+                  enabled: true,
+                  touchTooltipData: BarTouchTooltipData(
+                    tooltipPadding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      final label = _buildTrendDateLabel(
+                        startOffset + group.x,
+                        daysCount,
+                      );
+                      final type = rodIndex == 0 ? 'Masuk' : 'Keluar';
+                      final value = rod.toY * 1000;
+                      return BarTooltipItem(
+                        '$label\n$type: ${formatter.format(value)}',
+                        const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 11,
+                        ),
+                      );
+                    },
+                  ),
+                ),
                 titlesData: FlTitlesData(
                   show: true,
                   bottomTitles: AxisTitles(
@@ -576,8 +606,21 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                       },
                     ),
                   ),
-                  leftTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 42,
+                      interval: yInterval.toDouble(),
+                      getTitlesWidget: (value, meta) {
+                        return Text(
+                          _formatTrendYAxis(value),
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Color(0xFF94A3B8),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                   topTitles: const AxisTitles(
                     sideTitles: SideTitles(showTitles: false),
@@ -641,6 +684,17 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     if (_selectedPeriod == ReportPeriod.thisWeek) return 'minggu lalu';
     if (_selectedPeriod == ReportPeriod.thisMonth) return 'bulan lalu';
     return 'tahun lalu';
+  }
+
+  String _formatTrendYAxis(double value) {
+    if (value == 0) return '0';
+    if (value.abs() >= 1000) {
+      return '${(value / 1000).toStringAsFixed(1)}M';
+    }
+    if (value.abs() >= 1) {
+      return '${value.toStringAsFixed(0)}k';
+    }
+    return value.toStringAsFixed(1);
   }
 
   BarChartGroupData _makeGroupData(int x, double income, double expense) {
