@@ -179,7 +179,7 @@ Status Bayar : *$paymentLabel*$notesSection
 
 ------------------------------
 
-Terima kasih sudah menggunakan layanan kami.
+Terima kasih.
 ''';
 
     final encodedMessage = Uri.encodeComponent(message);
