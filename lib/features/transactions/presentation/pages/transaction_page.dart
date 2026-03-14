@@ -15,10 +15,10 @@ class TransactionPage extends ConsumerStatefulWidget {
 
 class _TransactionPageState extends ConsumerState<TransactionPage> {
   final TextEditingController _searchController = TextEditingController();
-  String _selectedFilter = 'Semua';
+  String _selectedFilter = 'Antrian';
 
   final List<String> _filters = [
-    'Semua',
+    'Antrian',
     'Proses',
     'Siap Dikirim',
     'Selesai',
@@ -76,7 +76,7 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
   }
 
   int _getFilterCount(String filter, List<TransactionEntity> allTransactions) {
-    if (filter == 'Semua') {
+    if (filter == 'Antrian') {
       return allTransactions.length;
     }
     if (filter == 'Proses') {
@@ -326,6 +326,9 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
     IconData icon;
     Color iconColor;
     Color iconBgColor;
+    Color paymentStatusColor;
+    Color paymentStatusBgColor;
+    String paymentStatusText;
 
     if (trx.status == 'PROCESS') {
       statusText = 'PROSES';
@@ -356,6 +359,20 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
           .inventory_2_outlined; // Re-use an icon matching completed/archived
       iconColor = const Color(0xFF059669);
       iconBgColor = const Color(0xFFD1FAE5);
+    }
+
+    if (trx.paymentStatus == 'PAID') {
+      paymentStatusText = 'LUNAS';
+      paymentStatusColor = const Color(0xFF059669);
+      paymentStatusBgColor = const Color(0xFFD1FAE5);
+    } else if (trx.paymentStatus == 'PARTIAL') {
+      paymentStatusText = 'DP';
+      paymentStatusColor = const Color(0xFFD97706);
+      paymentStatusBgColor = const Color(0xFFFEF3C7);
+    } else {
+      paymentStatusText = 'BELUM BAYAR';
+      paymentStatusColor = const Color(0xFFDC2626);
+      paymentStatusBgColor = const Color(0xFFFEE2E2);
     }
 
     return Container(
@@ -441,6 +458,42 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'STATUS BAYAR',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF94A3B8),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: paymentStatusBgColor,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          paymentStatusText,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: paymentStatusColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

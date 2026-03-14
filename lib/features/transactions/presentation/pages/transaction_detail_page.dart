@@ -1255,7 +1255,9 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
                       )
                     : const Icon(Icons.chat_outlined, size: 18),
                 label: Text(
-                  _isSendingWhatsApp ? 'MEMBUKA WHATSAPP...' : 'KIRIM WHATSAPP',
+                  _isSendingWhatsApp
+                      ? 'MEMBUKA WHATSAPP...'
+                      : 'KIRIM UPDATE WHATSAPP',
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
