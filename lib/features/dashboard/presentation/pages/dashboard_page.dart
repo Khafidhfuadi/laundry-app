@@ -130,9 +130,14 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                           color: const Color(0xFFE8F0FE),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(
-                          Icons.local_laundry_service,
-                          color: Color(0xFF0F62FE),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.asset(
+                            'assets/img/laundry-icon.png',
+                            width: 24,
+                            height: 24,
+                            fit: BoxFit.cover,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),

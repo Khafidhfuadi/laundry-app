@@ -70,10 +70,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.local_laundry_service_rounded,
-                        size: 64,
-                        color: colorScheme.primary,
+                      Image.asset(
+                        'assets/img/laundry-icon.png',
+                        width: 64,
+                        height: 64,
+                        fit: BoxFit.cover,
                       ),
                       const SizedBox(height: 16),
                       Text(
