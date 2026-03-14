@@ -115,7 +115,7 @@ class TransactionEntity {
       paymentReceivedAt: json['payment_received_at'] != null
           ? DateTime.parse(json['payment_received_at'] as String).toLocal()
           : null,
-        refundAt: json['refund_at'] != null
+      refundAt: json['refund_at'] != null
           ? DateTime.parse(json['refund_at'] as String).toLocal()
           : null,
       processedAt: json['processed_at'] != null
