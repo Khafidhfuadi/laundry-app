@@ -2402,7 +2402,9 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
           color: isSelected ? const Color(0xFFEEF2FF) : const Color(0xFFF8FAFC),
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color: isSelected ? const Color(0xFF0F62FE) : const Color(0xFFE2E8F0),
+            color: isSelected
+                ? const Color(0xFF0F62FE)
+                : const Color(0xFFE2E8F0),
             width: isSelected ? 1.4 : 1,
           ),
         ),
@@ -2413,7 +2415,9 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: isSelected ? const Color(0xFF0F62FE) : const Color(0xFF64748B),
+              color: isSelected
+                  ? const Color(0xFF0F62FE)
+                  : const Color(0xFF64748B),
             ),
           ),
         ),
