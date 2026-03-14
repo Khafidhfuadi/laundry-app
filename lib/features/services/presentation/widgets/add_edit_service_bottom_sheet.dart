@@ -41,8 +41,8 @@ class AddEditServiceBottomSheet extends ConsumerStatefulWidget {
 class _AddEditServiceBottomSheetState
     extends ConsumerState<AddEditServiceBottomSheet> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _categoryController;
   late final TextEditingController _itemNameController;
+  late String _selectedCategory;
 
   List<ServiceVariantEntity> _variants = [];
   bool _isLoading = false;
@@ -55,6 +55,15 @@ class _AddEditServiceBottomSheetState
   static const _border = Color(0xFFE2E8F0);
 
   static const _availableProcesses = ['Cuci', 'Kering', 'Setrika'];
+  static const _availableCategories = [
+    'Layanan Umum',
+    'Laundry',
+    'Dry Clean',
+    'Sepatu',
+    'Tas',
+    'Karpet',
+    'Bedcover',
+  ];
 
   bool get _isEdit => widget.service != null;
 
@@ -63,8 +72,11 @@ class _AddEditServiceBottomSheetState
     super.initState();
     final s = widget.service;
 
-    _categoryController = TextEditingController(text: s?.categoryName ?? '');
     _itemNameController = TextEditingController(text: s?.name ?? '');
+    final initialCategory = s?.categoryName.trim() ?? '';
+    _selectedCategory = initialCategory.isEmpty
+        ? 'Layanan Umum'
+        : initialCategory;
 
     if (s?.processType != null && s!.processType.isNotEmpty) {
       _selectedProcesses.addAll(
@@ -82,7 +94,6 @@ class _AddEditServiceBottomSheetState
 
   @override
   void dispose() {
-    _categoryController.dispose();
     _itemNameController.dispose();
     super.dispose();
   }
@@ -116,9 +127,7 @@ class _AddEditServiceBottomSheetState
     if (_isEdit) {
       final updated = widget.service!.copyWith(
         name: _itemNameController.text.trim(),
-        categoryName: _categoryController.text.trim().isEmpty
-            ? 'Layanan Umum'
-            : _categoryController.text.trim(),
+        categoryName: _selectedCategory,
         processType: processTypeStr,
         variants: _variants,
       );
@@ -129,9 +138,7 @@ class _AddEditServiceBottomSheetState
       success = await ref
           .read(serviceControllerProvider.notifier)
           .createService(
-            categoryName: _categoryController.text.trim().isEmpty
-                ? 'Layanan Umum'
-                : _categoryController.text.trim(),
+            categoryName: _selectedCategory,
             itemName: _itemNameController.text.trim(),
             processType: processTypeStr,
             variants: _variants,
@@ -303,10 +310,8 @@ class _AddEditServiceBottomSheetState
                           v == null || v.trim().isEmpty ? 'Wajib diisi' : null,
                     ),
                     const SizedBox(height: 16),
-                    _buildField(
-                      controller: _categoryController,
-                      label: 'Kategori Laporan (Opsional)',
-                      hint: 'Misal: Laundry (Default: Layanan Umum)',
+                    _buildCategoryDropdown(
+                      label: 'Kategori Layanan',
                       icon: Icons.category_outlined,
                     ),
                     const SizedBox(height: 16),
@@ -645,6 +650,73 @@ class _AddEditServiceBottomSheetState
       ],
     );
   }
+
+  Widget _buildCategoryDropdown({
+    required String label,
+    required IconData icon,
+  }) {
+    final categoryItems = {
+      ..._availableCategories,
+      if (_selectedCategory.trim().isNotEmpty) _selectedCategory,
+    }.toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF475569),
+          ),
+        ),
+        const SizedBox(height: 6),
+        DropdownButtonFormField<String>(
+          initialValue: _selectedCategory,
+          isExpanded: true,
+          items: categoryItems
+              .map(
+                (category) => DropdownMenuItem<String>(
+                  value: category,
+                  child: Text(
+                    category,
+                    style: const TextStyle(fontSize: 13),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              )
+              .toList(),
+          onChanged: (value) {
+            if (value == null) return;
+            setState(() => _selectedCategory = value);
+          },
+          style: const TextStyle(fontSize: 14, color: _textDark),
+          decoration: InputDecoration(
+            prefixIcon: Icon(icon, color: const Color(0xFF94A3B8), size: 18),
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: _border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: _border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: _primary, width: 1.5),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 12,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _VariantBottomSheet extends StatefulWidget {
@@ -686,7 +758,9 @@ class _VariantBottomSheetState extends State<_VariantBottomSheet> {
     );
 
     int displayHours = v?.estimatedHours ?? 24;
-    if (v != null && v.estimatedHours >= 24 && v.estimatedHours % 24 == 0) {
+    if (v == null) {
+      _timeUnitType = 'Hari';
+    } else if (v.estimatedHours >= 24 && v.estimatedHours % 24 == 0) {
       _timeUnitType = 'Hari';
       displayHours = v.estimatedHours ~/ 24;
     } else {

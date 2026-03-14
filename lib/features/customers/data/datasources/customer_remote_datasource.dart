@@ -6,6 +6,7 @@ abstract class CustomerRemoteDatasource {
   Future<CustomerEntity> getCustomerById(String id);
   Future<CustomerEntity> createCustomer(CustomerEntity customer);
   Future<CustomerEntity> updateCustomer(CustomerEntity customer);
+  Future<void> deleteCustomer(String id);
   Future<List<CustomerEntity>> searchCustomers(String query);
 }
 
@@ -52,6 +53,11 @@ class CustomerRemoteDatasourceImpl implements CustomerRemoteDatasource {
         .select()
         .single();
     return CustomerEntity.fromJson(response);
+  }
+
+  @override
+  Future<void> deleteCustomer(String id) async {
+    await supabaseClient.from('customers').delete().eq('id', id);
   }
 
   @override

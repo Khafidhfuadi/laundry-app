@@ -20,7 +20,7 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
   final List<String> _filters = [
     'Semua',
     'Proses',
-    'Siap Ambil',
+    'Siap Dikirim',
     'Selesai',
     'Dibatalkan',
   ];
@@ -51,7 +51,7 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
     // Status Filter
     if (_selectedFilter == 'Proses') {
       filtered = filtered.where((t) => t.status == 'PROCESS').toList();
-    } else if (_selectedFilter == 'Siap Ambil') {
+    } else if (_selectedFilter == 'Siap Dikirim') {
       filtered = filtered.where((t) => t.status == 'READY').toList();
     } else if (_selectedFilter == 'Selesai') {
       filtered = filtered
@@ -82,7 +82,7 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
     if (filter == 'Proses') {
       return allTransactions.where((t) => t.status == 'PROCESS').length;
     }
-    if (filter == 'Siap Ambil') {
+    if (filter == 'Siap Dikirim') {
       return allTransactions.where((t) => t.status == 'READY').length;
     }
     if (filter == 'Selesai') {
@@ -335,7 +335,7 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
       iconColor = const Color(0xFF0F62FE);
       iconBgColor = const Color(0xFFE8F0FE);
     } else if (trx.status == 'READY') {
-      statusText = 'SIAP AMBIL';
+      statusText = 'SIAP DIKIRIM';
       statusColor = const Color(0xFFD97706);
       statusBgColor = const Color(0xFFFEF3C7);
       icon = Icons.check_circle_outline;

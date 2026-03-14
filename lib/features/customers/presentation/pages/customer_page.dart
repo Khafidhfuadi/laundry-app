@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../domain/entities/customer_entity.dart';
@@ -570,6 +571,49 @@ class _CustomerPageState extends ConsumerState<CustomerPage> {
                       label: 'Terdaftar Pada',
                       value: createdAt,
                     ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              _showEditCustomerBottomSheet(context, customer);
+                            },
+                            icon: const Icon(Icons.edit_outlined, size: 18),
+                            label: const Text('Edit'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF0F62FE),
+                              side: const BorderSide(color: Color(0xFFBFDBFE)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              Navigator.pop(ctx);
+                              await _confirmDeleteCustomer(context, customer);
+                            },
+                            icon: const Icon(Icons.delete_outline, size: 18),
+                            label: const Text('Hapus'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFEF4444),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -577,6 +621,396 @@ class _CustomerPageState extends ConsumerState<CustomerPage> {
           ),
         );
       },
+    );
+  }
+
+  Future<void> _showEditCustomerBottomSheet(
+    BuildContext context,
+    CustomerEntity customer,
+  ) async {
+    final formKey = GlobalKey<FormState>();
+    final nameController = TextEditingController(text: customer.name);
+    final phoneController = TextEditingController(text: customer.phoneNumber);
+    final addressController = TextEditingController(text: customer.address);
+    final notesController = TextEditingController(text: customer.notes);
+    var isSaving = false;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final mediaQuery = MediaQuery.of(ctx);
+        final bottomInset = mediaQuery.viewInsets.bottom;
+
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return AnimatedPadding(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              padding: EdgeInsets.only(bottom: bottomInset),
+              child: SafeArea(
+                top: false,
+                child: Container(
+                  constraints: BoxConstraints(
+                    maxHeight: mediaQuery.size.height * 0.9,
+                  ),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF8F9FA),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(24),
+                    ),
+                  ),
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  child: SingleChildScrollView(
+                    child: Form(
+                      key: formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Center(
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(vertical: 12),
+                              width: 40,
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFCBD5E1),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE0E7FF),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.edit_outlined,
+                                  color: Color(0xFF0F62FE),
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Expanded(
+                                child: Text(
+                                  'Edit Pelanggan',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF1E293B),
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: isSaving
+                                    ? null
+                                    : () => Navigator.pop(ctx),
+                                icon: const Icon(Icons.close),
+                                color: const Color(0xFF64748B),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          _buildEditField(
+                            controller: nameController,
+                            label: 'Nama Pelanggan',
+                            hint: 'Masukkan nama pelanggan',
+                            validator: (value) =>
+                                value == null || value.trim().isEmpty
+                                ? 'Nama wajib diisi'
+                                : null,
+                          ),
+                          const SizedBox(height: 12),
+                          _buildEditField(
+                            controller: phoneController,
+                            label: 'Nomor WhatsApp',
+                            hint: '08xxxxxxxxxx',
+                            keyboardType: TextInputType.phone,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                RegExp(r'[0-9+]'),
+                              ),
+                            ],
+                            validator: (value) =>
+                                value == null || value.trim().isEmpty
+                                ? 'Nomor wajib diisi'
+                                : null,
+                          ),
+                          const SizedBox(height: 12),
+                          _buildEditField(
+                            controller: addressController,
+                            label: 'Alamat',
+                            hint: 'Masukkan alamat (opsional)',
+                            maxLines: 2,
+                          ),
+                          const SizedBox(height: 12),
+                          _buildEditField(
+                            controller: notesController,
+                            label: 'Catatan Khusus',
+                            hint: 'Masukkan catatan (opsional)',
+                            maxLines: 2,
+                          ),
+                          const SizedBox(height: 20),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: isSaving
+                                  ? null
+                                  : () async {
+                                      if (!formKey.currentState!.validate()) {
+                                        return;
+                                      }
+
+                                      setModalState(() => isSaving = true);
+
+                                      final updated = CustomerEntity(
+                                        id: customer.id,
+                                        name: nameController.text.trim(),
+                                        phoneNumber: phoneController.text
+                                            .trim(),
+                                        address: addressController.text.trim(),
+                                        notes: notesController.text.trim(),
+                                        totalTransactions:
+                                            customer.totalTransactions,
+                                        lastTransactionDate:
+                                            customer.lastTransactionDate,
+                                        createdAt: customer.createdAt,
+                                      );
+
+                                      final success = await ref
+                                          .read(
+                                            customerControllerProvider.notifier,
+                                          )
+                                          .updateCustomer(updated);
+
+                                      if (!mounted || !context.mounted) return;
+                                      if (success) {
+                                        if (ctx.mounted) {
+                                          Navigator.pop(ctx);
+                                        }
+                                      } else if (ctx.mounted) {
+                                        setModalState(() => isSaving = false);
+                                      }
+
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            success
+                                                ? 'Data pelanggan berhasil diperbarui'
+                                                : 'Gagal memperbarui pelanggan',
+                                          ),
+                                          backgroundColor: success
+                                              ? const Color(0xFF10B981)
+                                              : const Color(0xFFEF4444),
+                                        ),
+                                      );
+                                    },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF0F62FE),
+                                foregroundColor: Colors.white,
+                                disabledBackgroundColor: const Color(
+                                  0xFF0F62FE,
+                                ).withValues(alpha: 0.5),
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: isSaving
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Text(
+                                      'Simpan Perubahan',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    nameController.dispose();
+    phoneController.dispose();
+    addressController.dispose();
+    notesController.dispose();
+  }
+
+  Future<void> _confirmDeleteCustomer(
+    BuildContext context,
+    CustomerEntity customer,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Hapus Pelanggan',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF1E293B),
+            fontSize: 18,
+          ),
+        ),
+        content: RichText(
+          text: TextSpan(
+            style: const TextStyle(
+              fontSize: 14,
+              color: Color(0xFF64748B),
+              height: 1.5,
+            ),
+            children: [
+              const TextSpan(text: 'Yakin ingin menghapus pelanggan '),
+              TextSpan(
+                text: customer.name,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1E293B),
+                ),
+              ),
+              const TextSpan(text: '? Tindakan ini tidak dapat dibatalkan.'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text(
+              'Batal',
+              style: TextStyle(color: Color(0xFF64748B)),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              elevation: 0,
+            ),
+            child: const Text(
+              'Hapus',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted || !context.mounted) return;
+
+    final success = await ref
+        .read(customerControllerProvider.notifier)
+        .deleteCustomer(customer.id);
+
+    if (!mounted || !context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              success ? Icons.check_circle_outline : Icons.error_outline,
+              color: Colors.white,
+              size: 18,
+            ),
+            const SizedBox(width: 10),
+            Text(
+              success
+                  ? 'Pelanggan berhasil dihapus'
+                  : 'Gagal menghapus pelanggan',
+            ),
+          ],
+        ),
+        backgroundColor: success
+            ? const Color(0xFF10B981)
+            : const Color(0xFFEF4444),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
+  }
+
+  Widget _buildEditField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    TextInputType keyboardType = TextInputType.text,
+    List<TextInputFormatter>? inputFormatters,
+    String? Function(String?)? validator,
+    int maxLines = 1,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF475569),
+          ),
+        ),
+        const SizedBox(height: 6),
+        TextFormField(
+          controller: controller,
+          keyboardType: keyboardType,
+          inputFormatters: inputFormatters,
+          maxLines: maxLines,
+          validator: validator,
+          style: const TextStyle(fontSize: 14, color: Color(0xFF1E293B)),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 14),
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(
+                color: Color(0xFF0F62FE),
+                width: 1.5,
+              ),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
+          ),
+        ),
+      ],
     );
   }
 

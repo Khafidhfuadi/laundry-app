@@ -32,7 +32,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
   // Status workflow order
   static const List<Map<String, String>> _workflowSteps = [
     {'key': 'PROCESS', 'label': 'PROSES'},
-    {'key': 'READY', 'label': 'SIAP DIAMBIL'},
+    {'key': 'READY', 'label': 'SIAP DIKIRIM'},
     {'key': 'COMPLETED', 'label': 'SELESAI'},
   ];
 
@@ -79,6 +79,13 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
       if (success) {
         // Refresh detail
         ref.invalidate(transactionDetailProvider(widget.transactionId));
+
+        // Auto-open WhatsApp template when status moves to READY.
+        if (nextStatus == 'READY') {
+          await _sendStatusUpdateWhatsApp(trx, nextStatus);
+          if (!mounted) return;
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Status berhasil diperbarui')),
         );
@@ -91,6 +98,40 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
         );
       }
     }
+  }
+
+  Future<void> _sendStatusUpdateWhatsApp(
+    TransactionEntity trx,
+    String nextStatus,
+  ) async {
+    final customer = trx.customer;
+    if (customer == null || customer.phoneNumber.trim().isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Status diperbarui, tapi nomor WhatsApp pelanggan tidak tersedia',
+          ),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final success = await WhatsAppHelper.sendStatusUpdate(
+      phoneNumber: customer.phoneNumber,
+      customerName: customer.name,
+      transactionCode: trx.transactionCode,
+      status: nextStatus,
+    );
+
+    if (!mounted || success) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Status diperbarui, tapi gagal membuka WhatsApp'),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
 
   Future<void> _markAsPaid(TransactionEntity trx) async {

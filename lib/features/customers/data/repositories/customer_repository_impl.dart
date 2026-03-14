@@ -54,6 +54,16 @@ class CustomerRepositoryImpl implements CustomerRepository {
   }
 
   @override
+  Future<Either<Failure, void>> deleteCustomer(String id) async {
+    try {
+      await remoteDatasource.deleteCustomer(id);
+      return right(null);
+    } catch (e) {
+      return left(Failure(e.toString()));
+    }
+  }
+
+  @override
   Future<Either<Failure, List<CustomerEntity>>> searchCustomers(
     String query,
   ) async {

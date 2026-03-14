@@ -62,6 +62,36 @@ class CustomerController extends AsyncNotifier<List<CustomerEntity>> {
       },
     );
   }
+
+  Future<bool> updateCustomer(CustomerEntity customer) async {
+    final result = await _repository.updateCustomer(customer);
+
+    return result.fold(
+      (failure) {
+        state = AsyncValue.error(failure.message, StackTrace.current);
+        return false;
+      },
+      (_) {
+        loadCustomers();
+        return true;
+      },
+    );
+  }
+
+  Future<bool> deleteCustomer(String id) async {
+    final result = await _repository.deleteCustomer(id);
+
+    return result.fold(
+      (failure) {
+        state = AsyncValue.error(failure.message, StackTrace.current);
+        return false;
+      },
+      (_) {
+        loadCustomers();
+        return true;
+      },
+    );
+  }
 }
 
 final customerControllerProvider =

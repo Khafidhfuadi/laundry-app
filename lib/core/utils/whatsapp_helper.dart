@@ -83,7 +83,7 @@ Terima kasih! 🙏
 
     String statusText = '';
     if (status == 'READY') {
-      statusText = 'sudah SELESAI dan SIAP DIAMBIL';
+      statusText = 'sudah SELESAI dan SIAP DIKIRIM';
     } else if (status == 'PICKED_UP') {
       statusText = 'telah DIAMBIL. Terima kasih!';
     } else {

@@ -43,7 +43,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     int trxKemarin = 0;
     double pndpKemarin = 0;
     int trxProses = 0;
-    int trxSiapDiambil = 0;
+    int trxSiapDikirim = 0;
     int trxTerlambat = 0;
 
     final now = DateTime.now();
@@ -87,7 +87,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         }
 
         if (trx.status == 'PROCESS') trxProses++;
-        if (trx.status == 'READY') trxSiapDiambil++;
+        if (trx.status == 'READY') trxSiapDikirim++;
         if (isOverdue) trxTerlambat++;
       }
     }
@@ -357,8 +357,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: _buildStatusSummaryCard(
-                      title: 'Siap Diambil',
-                      value: trxSiapDiambil.toString(),
+                      title: 'Siap Dikirim',
+                      value: trxSiapDikirim.toString(),
                       icon: Icons.check_circle_outline_rounded,
                       color: const Color(0xFF059669),
                       bgColor: const Color(0xFFECFDF5),
