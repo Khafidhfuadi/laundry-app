@@ -51,10 +51,23 @@ class ServiceRepositoryImpl implements ServiceRepository {
 
   @override
   Future<Either<Failure, ServiceEntity>> updateService(
-      ServiceEntity service) async {
+    ServiceEntity service,
+  ) async {
     try {
       final updated = await remoteDatasource.updateService(service);
       return right(updated);
+    } catch (e) {
+      return left(Failure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> reorderServices(
+    List<ServiceEntity> orderedServices,
+  ) async {
+    try {
+      await remoteDatasource.reorderServices(orderedServices);
+      return right(unit);
     } catch (e) {
       return left(Failure(e.toString()));
     }

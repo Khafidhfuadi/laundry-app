@@ -25,6 +25,7 @@ abstract class ServiceRemoteDatasource {
     required List<ServiceVariantEntity> variants,
   });
   Future<ServiceEntity> updateService(ServiceEntity service);
+  Future<void> reorderServices(List<ServiceEntity> orderedServices);
   Future<void> deleteService(String id);
 }
 
@@ -38,6 +39,7 @@ class ServiceRemoteDatasourceImpl implements ServiceRemoteDatasource {
     name,
     category_id,
     process_type,
+    sort_order,
     service_categories (
       name
     ),
@@ -49,7 +51,8 @@ class ServiceRemoteDatasourceImpl implements ServiceRemoteDatasource {
       price,
       service_type,
       estimated_hours,
-      notes
+      notes,
+      sort_order
     )
   ''';
 
@@ -58,11 +61,18 @@ class ServiceRemoteDatasourceImpl implements ServiceRemoteDatasource {
     final response = await supabaseClient
         .from('services')
         .select(_serviceSelect)
-        .order('name');
-    final mapped = (response as List).map((e) => ServiceEntity.fromJson(e)).toList();
-    // Sort variants by name for consistency
+        .order('sort_order', ascending: true)
+        .order('name', ascending: true);
+    final mapped = (response as List)
+        .map((e) => ServiceEntity.fromJson(e))
+        .toList();
+    // Keep variant order stable from backend priority, then name fallback.
     for (var s in mapped) {
-      s.variants.sort((a, b) => a.variantName.compareTo(b.variantName));
+      s.variants.sort((a, b) {
+        final byOrder = a.sortOrder.compareTo(b.sortOrder);
+        if (byOrder != 0) return byOrder;
+        return a.variantName.compareTo(b.variantName);
+      });
     }
     return mapped;
   }
@@ -75,12 +85,14 @@ class ServiceRemoteDatasourceImpl implements ServiceRemoteDatasource {
           id,
           name,
           category_id,
+          sort_order,
           service_categories (
             id,
             name
           )
         ''')
-        .order('name');
+        .order('sort_order', ascending: true)
+        .order('name', ascending: true);
 
     return (response as List).map((e) {
       final cat = e['service_categories'] ?? {};
@@ -108,7 +120,7 @@ class ServiceRemoteDatasourceImpl implements ServiceRemoteDatasource {
         .select('id')
         .ilike('name', catName)
         .maybeSingle();
-        
+
     if (existingCat != null) {
       categoryId = existingCat['id'] as String;
     } else {
@@ -127,6 +139,7 @@ class ServiceRemoteDatasourceImpl implements ServiceRemoteDatasource {
           'name': itemName.trim(),
           'category_id': categoryId,
           'process_type': processType.trim(),
+          'sort_order': await _nextServiceSortOrder(),
         })
         .select('id')
         .single();
@@ -134,7 +147,9 @@ class ServiceRemoteDatasourceImpl implements ServiceRemoteDatasource {
 
     // 3. Insert service variants (Detail)
     if (variants.isNotEmpty) {
-      final variantsData = variants.map((v) {
+      final variantsData = variants.asMap().entries.map((entry) {
+        final idx = entry.key;
+        final v = entry.value;
         return {
           'service_id': serviceId,
           'variant': v.variantName.trim(),
@@ -143,9 +158,10 @@ class ServiceRemoteDatasourceImpl implements ServiceRemoteDatasource {
           'service_type': v.serviceType,
           'estimated_hours': v.estimatedHours,
           'notes': v.notes.trim(),
+          'sort_order': v.sortOrder == 0 ? idx : v.sortOrder,
         };
       }).toList();
-      
+
       await supabaseClient.from('service_variants').insert(variantsData);
     }
 
@@ -203,6 +219,7 @@ class ServiceRemoteDatasourceImpl implements ServiceRemoteDatasource {
         'service_type': v.serviceType,
         'estimated_hours': v.estimatedHours,
         'notes': v.notes.trim(),
+        'sort_order': v.sortOrder,
       };
       // If it's an existing variant, we must include its ID to trigger update instead of insert
       if (v.id.isNotEmpty && !v.id.startsWith('temp_')) {
@@ -219,6 +236,32 @@ class ServiceRemoteDatasourceImpl implements ServiceRemoteDatasource {
         .single();
 
     return ServiceEntity.fromJson(response);
+  }
+
+  @override
+  Future<void> reorderServices(List<ServiceEntity> orderedServices) async {
+    final updates = orderedServices.asMap().entries.map((entry) {
+      return supabaseClient
+          .from('services')
+          .update({'sort_order': entry.key})
+          .eq('id', entry.value.id);
+    }).toList();
+
+    await Future.wait(updates);
+  }
+
+  Future<int> _nextServiceSortOrder() async {
+    final response = await supabaseClient
+        .from('services')
+        .select('sort_order')
+        .order('sort_order', ascending: false)
+        .limit(1)
+        .maybeSingle();
+
+    final currentMax = response == null
+        ? -1
+        : (response['sort_order'] as int? ?? -1);
+    return currentMax + 1;
   }
 
   @override

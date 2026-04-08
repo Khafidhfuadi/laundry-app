@@ -17,8 +17,9 @@ final serviceRepositoryProvider = Provider<ServiceRepository>((ref) {
 });
 
 /// Provider untuk daftar service items (untuk dropdown di form)
-final serviceItemsProvider =
-    FutureProvider<List<ServiceItemOption>>((ref) async {
+final serviceItemsProvider = FutureProvider<List<ServiceItemOption>>((
+  ref,
+) async {
   final repo = ref.watch(serviceRepositoryProvider);
   final result = await repo.getServiceItems();
   return result.fold(
@@ -82,6 +83,29 @@ class ServiceController extends AsyncNotifier<List<ServiceEntity>> {
     return result.fold(
       (failure) {
         state = AsyncValue.error(failure.message, StackTrace.current);
+        return false;
+      },
+      (_) {
+        refresh();
+        return true;
+      },
+    );
+  }
+
+  Future<bool> reorderServices(List<ServiceEntity> orderedServices) async {
+    final optimistic = orderedServices
+        .asMap()
+        .entries
+        .map((entry) => entry.value.copyWith(sortOrder: entry.key))
+        .toList();
+    state = AsyncValue.data(optimistic);
+
+    final result = await _repository.reorderServices(optimistic);
+
+    return result.fold(
+      (failure) {
+        state = AsyncValue.error(failure.message, StackTrace.current);
+        refresh();
         return false;
       },
       (_) {

@@ -16,6 +16,7 @@ class _ServicePageState extends ConsumerState<ServicePage> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   String? _selectedCategory;
+  final Set<String> _expandedServiceIds = <String>{};
 
   static const _primaryColor = Color(0xFF0F62FE);
   static const _bgColor = Color(0xFFF8F9FA);
@@ -31,13 +32,59 @@ class _ServicePageState extends ConsumerState<ServicePage> {
 
   List<ServiceEntity> _filtered(List<ServiceEntity> all) {
     return all.where((s) {
-      final matchQuery = _searchQuery.isEmpty ||
+      final matchQuery =
+          _searchQuery.isEmpty ||
           s.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          (s.categoryName.toLowerCase().contains(_searchQuery.toLowerCase()) && s.categoryName != 'Layanan Umum');
+          (s.categoryName.toLowerCase().contains(_searchQuery.toLowerCase()) &&
+              s.categoryName != 'Layanan Umum');
       final matchCat =
           _selectedCategory == null || s.categoryName == _selectedCategory;
       return matchQuery && matchCat;
     }).toList();
+  }
+
+  bool get _isReorderEnabled {
+    return _searchQuery.trim().isEmpty && _selectedCategory == null;
+  }
+
+  void _toggleExpanded(String serviceId) {
+    setState(() {
+      if (_expandedServiceIds.contains(serviceId)) {
+        _expandedServiceIds.remove(serviceId);
+      } else {
+        _expandedServiceIds.add(serviceId);
+      }
+    });
+  }
+
+  Future<void> _onReorder(
+    List<ServiceEntity> currentList,
+    int oldIndex,
+    int newIndex,
+  ) async {
+    if (!_isReorderEnabled) return;
+
+    if (newIndex > oldIndex) {
+      newIndex -= 1;
+    }
+
+    final reordered = List<ServiceEntity>.from(currentList);
+    final moved = reordered.removeAt(oldIndex);
+    reordered.insert(newIndex, moved);
+
+    final success = await ref
+        .read(serviceControllerProvider.notifier)
+        .reorderServices(reordered);
+
+    if (!mounted) return;
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Gagal menyimpan urutan layanan'),
+          backgroundColor: Color(0xFFEF4444),
+        ),
+      );
+    }
   }
 
   Future<void> _confirmDelete(ServiceEntity service) async {
@@ -55,7 +102,11 @@ class _ServicePageState extends ConsumerState<ServicePage> {
         ),
         content: RichText(
           text: TextSpan(
-            style: const TextStyle(fontSize: 14, color: _textMuted, height: 1.5),
+            style: const TextStyle(
+              fontSize: 14,
+              color: _textMuted,
+              height: 1.5,
+            ),
             children: [
               const TextSpan(text: 'Yakin ingin menghapus layanan '),
               TextSpan(
@@ -72,8 +123,7 @@ class _ServicePageState extends ConsumerState<ServicePage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal',
-                style: TextStyle(color: _textMuted)),
+            child: const Text('Batal', style: TextStyle(color: _textMuted)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -85,8 +135,10 @@ class _ServicePageState extends ConsumerState<ServicePage> {
               ),
               elevation: 0,
             ),
-            child: const Text('Hapus',
-                style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Hapus',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -108,16 +160,20 @@ class _ServicePageState extends ConsumerState<ServicePage> {
                   size: 18,
                 ),
                 const SizedBox(width: 10),
-                Text(success
-                    ? 'Layanan berhasil dihapus'
-                    : 'Gagal menghapus layanan'),
+                Text(
+                  success
+                      ? 'Layanan berhasil dihapus'
+                      : 'Gagal menghapus layanan',
+                ),
               ],
             ),
-            backgroundColor:
-                success ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+            backgroundColor: success
+                ? const Color(0xFF10B981)
+                : const Color(0xFFEF4444),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
+              borderRadius: BorderRadius.circular(12),
+            ),
             margin: const EdgeInsets.all(16),
           ),
         );
@@ -168,13 +224,15 @@ class _ServicePageState extends ConsumerState<ServicePage> {
                             data: (s) => Text(
                               '${s.length} layanan tersedia',
                               style: const TextStyle(
-                                  fontSize: 13,
-                                  color: _textMuted,
-                                  fontWeight: FontWeight.w500),
+                                fontSize: 13,
+                                color: _textMuted,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
-                            loading: () => const Text('Memuat...',
-                                style:
-                                    TextStyle(fontSize: 13, color: _textMuted)),
+                            loading: () => const Text(
+                              'Memuat...',
+                              style: TextStyle(fontSize: 13, color: _textMuted),
+                            ),
                             error: (_, __) => const SizedBox.shrink(),
                           ),
                         ],
@@ -214,27 +272,36 @@ class _ServicePageState extends ConsumerState<ServicePage> {
                     ),
                     child: TextField(
                       controller: _searchController,
-                      style:
-                          const TextStyle(fontSize: 14, color: _textDark),
+                      style: const TextStyle(fontSize: 14, color: _textDark),
                       decoration: InputDecoration(
                         hintText: 'Cari nama produk...',
                         hintStyle: const TextStyle(
-                            color: _textLight, fontSize: 14),
-                        prefixIcon: const Icon(Icons.search,
-                            color: _textMuted, size: 20),
+                          color: _textLight,
+                          fontSize: 14,
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          color: _textMuted,
+                          size: 20,
+                        ),
                         suffixIcon: _searchQuery.isNotEmpty
                             ? GestureDetector(
                                 onTap: () {
                                   _searchController.clear();
                                   setState(() => _searchQuery = '');
                                 },
-                                child: const Icon(Icons.close,
-                                    color: _textLight, size: 18),
+                                child: const Icon(
+                                  Icons.close,
+                                  color: _textLight,
+                                  size: 18,
+                                ),
                               )
                             : null,
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 14),
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
                       ),
                       onChanged: (v) => setState(() => _searchQuery = v),
                     ),
@@ -248,14 +315,24 @@ class _ServicePageState extends ConsumerState<ServicePage> {
               child: serviceState.when(
                 data: (allServices) {
                   // Kita hide fitur kategori horizontal jika kategori default cuma Layanan Umum
-                  final showCategories = allServices.any((s) => s.categoryName != 'Layanan Umum');
+                  final showCategories = allServices.any(
+                    (s) => s.categoryName != 'Layanan Umum',
+                  );
                   var categories = <String>[];
                   if (showCategories) {
-                    categories = allServices.map((s) => s.categoryName).toSet().toList();
+                    categories = allServices
+                        .map((s) => s.categoryName)
+                        .toSet()
+                        .toList();
                     categories.sort();
                   }
-                  
+
                   final filtered = _filtered(allServices);
+                  final formatter = NumberFormat.currency(
+                    locale: 'id_ID',
+                    symbol: 'Rp ',
+                    decimalDigits: 0,
+                  );
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -276,9 +353,38 @@ class _ServicePageState extends ConsumerState<ServicePage> {
                         const SizedBox(height: 12),
                       ],
 
+                      if (filtered.isNotEmpty) _buildDragHint(),
+
                       Expanded(
                         child: filtered.isEmpty
                             ? _buildEmptyState()
+                            : _isReorderEnabled
+                            ? RefreshIndicator(
+                                color: _primaryColor,
+                                onRefresh: () async => ref
+                                    .read(serviceControllerProvider.notifier)
+                                    .refresh(),
+                                child: ReorderableListView.builder(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    20,
+                                    4,
+                                    20,
+                                    20,
+                                  ),
+                                  itemCount: filtered.length,
+                                  buildDefaultDragHandles: false,
+                                  onReorder: (oldIndex, newIndex) =>
+                                      _onReorder(filtered, oldIndex, newIndex),
+                                  itemBuilder: (context, index) {
+                                    return _buildAccordionItem(
+                                      service: filtered[index],
+                                      index: index,
+                                      formatter: formatter,
+                                      showDragHandle: true,
+                                    );
+                                  },
+                                ),
+                              )
                             : RefreshIndicator(
                                 color: _primaryColor,
                                 onRefresh: () async => ref
@@ -286,10 +392,19 @@ class _ServicePageState extends ConsumerState<ServicePage> {
                                     .refresh(),
                                 child: ListView.builder(
                                   padding: const EdgeInsets.fromLTRB(
-                                      20, 4, 20, 20),
+                                    20,
+                                    4,
+                                    20,
+                                    20,
+                                  ),
                                   itemCount: filtered.length,
                                   itemBuilder: (context, index) {
-                                    return _buildProductGroup(filtered[index]);
+                                    return _buildAccordionItem(
+                                      service: filtered[index],
+                                      index: index,
+                                      formatter: formatter,
+                                      showDragHandle: false,
+                                    );
                                   },
                                 ),
                               ),
@@ -298,8 +413,7 @@ class _ServicePageState extends ConsumerState<ServicePage> {
                   );
                 },
                 loading: () => const Center(
-                  child:
-                      CircularProgressIndicator(color: _primaryColor),
+                  child: CircularProgressIndicator(color: _primaryColor),
                 ),
                 error: (error, _) => Center(
                   child: Column(
@@ -311,20 +425,27 @@ class _ServicePageState extends ConsumerState<ServicePage> {
                           color: const Color(0xFFFFE4E6),
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        child: const Icon(Icons.error_outline,
-                            size: 40, color: Color(0xFFEF4444)),
+                        child: const Icon(
+                          Icons.error_outline,
+                          size: 40,
+                          color: Color(0xFFEF4444),
+                        ),
                       ),
                       const SizedBox(height: 16),
-                      const Text('Gagal memuat layanan',
-                          style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: _textDark)),
+                      const Text(
+                        'Gagal memuat layanan',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: _textDark,
+                        ),
+                      ),
                       const SizedBox(height: 8),
-                      Text(error.toString(),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                              fontSize: 13, color: _textMuted)),
+                      Text(
+                        error.toString(),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 13, color: _textMuted),
+                      ),
                       const SizedBox(height: 20),
                       ElevatedButton.icon(
                         onPressed: () => ref
@@ -382,77 +503,139 @@ class _ServicePageState extends ConsumerState<ServicePage> {
     );
   }
 
-  Widget _buildProductGroup(ServiceEntity service) {
-    final formatter = NumberFormat.currency(
-        locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+  Widget _buildDragHint() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+      child: Text(
+        _isReorderEnabled
+            ? 'Tarik ikon handle untuk mengubah urutan katalog layanan.'
+            : 'Urut drag dinonaktifkan saat filter atau pencarian aktif.',
+        style: const TextStyle(
+          fontSize: 12,
+          color: _textMuted,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12, top: 4),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE0E7FF),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.layers_outlined,
-                    color: _primaryColor, size: 16),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  service.name,
-                  style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: _textDark),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '${service.variants.length} Varian',
-                  style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: _textMuted),
-                ),
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: () => showAddEditServiceBottomSheet(context, service: service),
-                child: const Icon(Icons.add_circle_outline, color: _primaryColor, size: 24),
-              ),
-              const SizedBox(width: 12),
-              GestureDetector(
-                onTap: () => showAddEditServiceBottomSheet(context, service: service), // For simplicity, edit the parent by just launching the sheet with the first variant
-                child: const Icon(Icons.edit_outlined, color: _textMuted, size: 22),
-              ),
-              const SizedBox(width: 12),
-              GestureDetector(
-                onTap: () => _confirmDelete(service),
-                child: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 22),
-              ),
-            ],
+  Widget _buildAccordionItem({
+    required ServiceEntity service,
+    required int index,
+    required NumberFormat formatter,
+    required bool showDragHandle,
+  }) {
+    final isExpanded = _expandedServiceIds.contains(service.id);
+
+    return Container(
+      key: ValueKey('service-${service.id}'),
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
-        ),
-        ...service.variants.map(
-          (v) => _buildServiceCard(service, v, formatter),
-        ),
-        const SizedBox(height: 16),
-      ],
+        ],
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () => _toggleExpanded(service.id),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              child: Row(
+                children: [
+                  if (showDragHandle)
+                    ReorderableDragStartListener(
+                      index: index,
+                      child: const Padding(
+                        padding: EdgeInsets.only(right: 8),
+                        child: Icon(
+                          Icons.drag_handle,
+                          color: _textLight,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          service.name,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: _textDark,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${service.variants.length} varian',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: _textMuted,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => showAddEditServiceBottomSheet(
+                      context,
+                      service: service,
+                    ),
+                    child: const Icon(
+                      Icons.edit_outlined,
+                      color: _textMuted,
+                      size: 21,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  GestureDetector(
+                    onTap: () => _confirmDelete(service),
+                    child: const Icon(
+                      Icons.delete_outline,
+                      color: Color(0xFFEF4444),
+                      size: 21,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Icon(
+                    isExpanded ? Icons.expand_less : Icons.expand_more,
+                    color: _textMuted,
+                    size: 22,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          AnimatedCrossFade(
+            duration: const Duration(milliseconds: 200),
+            crossFadeState: isExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            firstChild: const SizedBox.shrink(),
+            secondChild: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+              child: Column(
+                children: service.variants
+                    .map((v) => _buildServiceCard(service, v, formatter))
+                    .toList(),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -491,11 +674,14 @@ class _ServicePageState extends ConsumerState<ServicePage> {
                         children: [
                           Expanded(
                             child: Text(
-                              variant.variantName.isEmpty ? 'Umum' : variant.variantName,
+                              variant.variantName.isEmpty
+                                  ? 'Umum'
+                                  : variant.variantName,
                               style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: _textDark),
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: _textDark,
+                              ),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -513,12 +699,19 @@ class _ServicePageState extends ConsumerState<ServicePage> {
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          const Icon(Icons.schedule, size: 14, color: _textLight),
+                          const Icon(
+                            Icons.schedule,
+                            size: 14,
+                            color: _textLight,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             _formatHours(variant.estimatedHours),
                             style: const TextStyle(
-                                fontSize: 13, color: _textMuted, fontWeight: FontWeight.w500),
+                              fontSize: 13,
+                              color: _textMuted,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ],
                       ),
@@ -527,13 +720,19 @@ class _ServicePageState extends ConsumerState<ServicePage> {
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.notes, size: 14, color: _textLight),
+                            const Icon(
+                              Icons.notes,
+                              size: 14,
+                              color: _textLight,
+                            ),
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(
                                 variant.notes,
                                 style: const TextStyle(
-                                    fontSize: 12, color: _textMuted),
+                                  fontSize: 12,
+                                  color: _textMuted,
+                                ),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -552,26 +751,41 @@ class _ServicePageState extends ConsumerState<ServicePage> {
                     Text(
                       formatter.format(variant.price.toInt()),
                       style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: _primaryColor),
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: _primaryColor,
+                      ),
                     ),
                     Text(
                       '/ ${variant.unitType}',
-                      style:
-                          const TextStyle(fontSize: 12, color: _textLight, fontWeight: FontWeight.w500),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: _textLight,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Row(
                       children: [
                         GestureDetector(
                           onTap: () async {
-                            final updatedVariant = await showVariantBottomSheet(context, variant: variant);
+                            final updatedVariant = await showVariantBottomSheet(
+                              context,
+                              variant: variant,
+                            );
                             if (updatedVariant != null) {
                               final updatedService = service.copyWith(
-                                variants: service.variants.map((v) => v.id == variant.id ? updatedVariant : v).toList(),
+                                variants: service.variants
+                                    .map(
+                                      (v) => v.id == variant.id
+                                          ? updatedVariant
+                                          : v,
+                                    )
+                                    .toList(),
                               );
-                              ref.read(serviceControllerProvider.notifier).updateService(updatedService);
+                              ref
+                                  .read(serviceControllerProvider.notifier)
+                                  .updateService(updatedService);
                             }
                           },
                           child: Container(
@@ -580,7 +794,11 @@ class _ServicePageState extends ConsumerState<ServicePage> {
                               color: const Color(0xFFF1F5F9),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Icon(Icons.edit_outlined, size: 16, color: _textMuted),
+                            child: const Icon(
+                              Icons.edit_outlined,
+                              size: 16,
+                              color: _textMuted,
+                            ),
                           ),
                         ),
                       ],
@@ -599,11 +817,16 @@ class _ServicePageState extends ConsumerState<ServicePage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-          color: bg, borderRadius: BorderRadius.circular(6)),
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+      ),
       child: Text(
         label,
         style: TextStyle(
-            fontSize: 10, fontWeight: FontWeight.bold, color: textColor),
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          color: textColor,
+        ),
       ),
     );
   }
@@ -619,16 +842,20 @@ class _ServicePageState extends ConsumerState<ServicePage> {
               color: const Color(0xFFE0E7FF),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Icon(Icons.layers_outlined,
-                size: 48, color: _primaryColor),
+            child: const Icon(
+              Icons.layers_outlined,
+              size: 48,
+              color: _primaryColor,
+            ),
           ),
           const SizedBox(height: 20),
           const Text(
             'Layanan Tidak Ditemukan',
             style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: _textDark),
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: _textDark,
+            ),
           ),
           const SizedBox(height: 8),
           const Text(

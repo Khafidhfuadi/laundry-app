@@ -13,5 +13,8 @@ abstract class ServiceRepository {
     required List<ServiceVariantEntity> variants,
   });
   Future<Either<Failure, ServiceEntity>> updateService(ServiceEntity service);
+  Future<Either<Failure, Unit>> reorderServices(
+    List<ServiceEntity> orderedServices,
+  );
   Future<Either<Failure, Unit>> deleteService(String id);
 }

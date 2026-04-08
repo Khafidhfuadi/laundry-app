@@ -252,7 +252,10 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
         final label = variantName.isEmpty
             ? serviceName
             : '$serviceName - $variantName';
-        return '$label (${_formatQuantity(item.quantity)} $unitType) = ${_formatter.format(item.subtotal)}';
+        final unitPrice = item.quantity > 0
+            ? item.subtotal / item.quantity
+            : item.subtotal;
+        return '$label (${_formatQuantity(item.quantity)} $unitType x ${_formatter.format(unitPrice)}/$unitType) = ${_formatter.format(item.subtotal)}';
       }).toList();
 
       success = await WhatsAppHelper.sendTransactionSummary(
@@ -266,6 +269,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
         paidAmount: trx.paidAmount,
         paymentStatus: trx.paymentStatus,
         outletName: trx.outlet?.name ?? 'Laundry App',
+        perfumeName: trx.perfume?.name ?? '',
         notes: trx.notes,
       );
     }

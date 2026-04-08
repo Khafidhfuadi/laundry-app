@@ -14,6 +14,7 @@ import '../../../services/presentation/controllers/service_controller.dart';
 import '../../../outlet/presentation/controllers/outlet_controller.dart';
 import '../../../outlet/presentation/controllers/active_outlet_controller.dart';
 import '../../../perfumes/presentation/controllers/perfume_controller.dart';
+import '../../../perfumes/domain/entities/perfume_entity.dart';
 import '../../../../core/utils/whatsapp_helper.dart';
 
 class AddTransactionPage extends ConsumerStatefulWidget {
@@ -1557,6 +1558,21 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
             symbol: 'Rp',
             decimalDigits: 0,
           );
+          final perfumes = ref
+              .read(perfumeControllerProvider)
+              .maybeWhen(
+                data: (value) => value,
+                orElse: () => const <PerfumeEntity>[],
+              );
+          String selectedPerfumeName = '';
+          if (_selectedPerfumeId != null) {
+            for (final p in perfumes) {
+              if (p.id == _selectedPerfumeId) {
+                selectedPerfumeName = p.name;
+                break;
+              }
+            }
+          }
           final itemLines = _items.map((item) {
             final serviceName = item.serviceVariant?.service?.name ?? 'Layanan';
             final variantName = item.serviceVariant?.variantName ?? '';
@@ -1564,7 +1580,10 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
             final label = variantName.isEmpty
                 ? serviceName
                 : '$serviceName - $variantName';
-            return '$label (${_formatQuantity(item.quantity)} $unitType) = ${formatter.format(item.subtotal)}';
+            final unitPrice = item.quantity > 0
+                ? item.subtotal / item.quantity
+                : item.subtotal;
+            return '$label (${_formatQuantity(item.quantity)} $unitType x ${formatter.format(unitPrice)}/$unitType) = ${formatter.format(item.subtotal)}';
           }).toList();
 
           waOpened = await WhatsAppHelper.sendTransactionSummary(
@@ -1578,6 +1597,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
             paidAmount: newTransaction.paidAmount,
             paymentStatus: newTransaction.paymentStatus,
             outletName: activeOutletState.value?.name ?? 'Laundry App',
+            perfumeName: selectedPerfumeName,
             notes: newTransaction.notes,
           );
         }
@@ -2306,7 +2326,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: _buildPaymentStatusPill(
-                        label: 'DP / Sebagian',
+                        label: 'DP',
                         value: 'PARTIAL',
                       ),
                     ),

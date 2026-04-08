@@ -118,6 +118,7 @@ Terima kasih! 🙏
     required double paidAmount,
     required String paymentStatus,
     String outletName = 'Laundry App',
+    String perfumeName = '',
     String notes = '',
   }) async {
     final formattedPhone = _formatPhoneNumber(phoneNumber);
@@ -152,6 +153,9 @@ Terima kasih! 🙏
     final notesSection = notes.trim().isEmpty
         ? ''
         : '\nCatatan: ${notes.trim()}\n';
+    final perfumeSection = perfumeName.trim().isEmpty
+        ? ''
+        : '\nParfum : *${perfumeName.trim()}*';
 
     final message =
         '''
@@ -169,6 +173,7 @@ Estimasi : *${dateFormat.format(estimatedCompletionDate)}*
 
 Detail Layanan:
 $itemSection
+$perfumeSection
 
 ------------------------------
 

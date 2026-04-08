@@ -7,6 +7,7 @@ class ServiceVariantEntity {
   final String serviceType;
   final int estimatedHours;
   final String notes;
+  final int sortOrder;
   final ServiceEntity? service; // Parent reference for joins
 
   const ServiceVariantEntity({
@@ -18,6 +19,7 @@ class ServiceVariantEntity {
     required this.serviceType,
     required this.estimatedHours,
     required this.notes,
+    this.sortOrder = 0,
     this.service,
   });
 
@@ -31,6 +33,7 @@ class ServiceVariantEntity {
       serviceType: json['service_type'] as String? ?? 'Reguler',
       estimatedHours: json['estimated_hours'] as int? ?? 24,
       notes: json['notes'] as String? ?? '',
+      sortOrder: json['sort_order'] as int? ?? 0,
       service: json['services'] != null
           ? ServiceEntity.fromJson(json['services'])
           : null,
@@ -47,6 +50,7 @@ class ServiceVariantEntity {
       'service_type': serviceType,
       'estimated_hours': estimatedHours,
       'notes': notes,
+      'sort_order': sortOrder,
     };
   }
 
@@ -59,6 +63,7 @@ class ServiceVariantEntity {
     String? serviceType,
     int? estimatedHours,
     String? notes,
+    int? sortOrder,
     ServiceEntity? service,
   }) {
     return ServiceVariantEntity(
@@ -70,6 +75,7 @@ class ServiceVariantEntity {
       serviceType: serviceType ?? this.serviceType,
       estimatedHours: estimatedHours ?? this.estimatedHours,
       notes: notes ?? this.notes,
+      sortOrder: sortOrder ?? this.sortOrder,
       service: service ?? this.service,
     );
   }
@@ -81,6 +87,7 @@ class ServiceEntity {
   final String categoryId;
   final String categoryName;
   final String processType;
+  final int sortOrder;
   final List<ServiceVariantEntity> variants;
 
   const ServiceEntity({
@@ -89,6 +96,7 @@ class ServiceEntity {
     required this.categoryId,
     required this.categoryName,
     required this.processType,
+    this.sortOrder = 0,
     this.variants = const [],
   });
 
@@ -100,10 +108,11 @@ class ServiceEntity {
       categoryId: json['category_id'] as String? ?? '',
       categoryName: cat['name'] as String? ?? 'Layanan Umum',
       processType: json['process_type'] as String? ?? '',
+      sortOrder: json['sort_order'] as int? ?? 0,
       variants: json['service_variants'] != null
           ? (json['service_variants'] as List)
-              .map((e) => ServiceVariantEntity.fromJson(e))
-              .toList()
+                .map((e) => ServiceVariantEntity.fromJson(e))
+                .toList()
           : [],
     );
   }
@@ -114,6 +123,7 @@ class ServiceEntity {
       'name': name,
       if (categoryId.isNotEmpty) 'category_id': categoryId,
       'process_type': processType,
+      'sort_order': sortOrder,
       // variants biasanya tidak dimasukkan saat toJson entity parent kecuali bulk upsert manual
     };
   }
@@ -124,6 +134,7 @@ class ServiceEntity {
     String? categoryId,
     String? categoryName,
     String? processType,
+    int? sortOrder,
     List<ServiceVariantEntity>? variants,
   }) {
     return ServiceEntity(
@@ -132,6 +143,7 @@ class ServiceEntity {
       categoryId: categoryId ?? this.categoryId,
       categoryName: categoryName ?? this.categoryName,
       processType: processType ?? this.processType,
+      sortOrder: sortOrder ?? this.sortOrder,
       variants: variants ?? this.variants,
     );
   }
