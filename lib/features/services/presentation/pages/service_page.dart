@@ -578,17 +578,18 @@ class _ServicePageState extends ConsumerState<ServicePage> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          '${service.variants.length} varian',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: _textMuted,
-                            fontWeight: FontWeight.w600,
+                        if (service.processType.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          _buildTag(
+                            service.processType,
+                            const Color(0xFFF0FDF4),
+                            const Color(0xFF16A34A),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ),
+
                   GestureDetector(
                     onTap: () => showAddEditServiceBottomSheet(
                       context,
@@ -651,9 +652,14 @@ class _ServicePageState extends ConsumerState<ServicePage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.10),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
           ),
         ],
       ),
@@ -686,14 +692,6 @@ class _ServicePageState extends ConsumerState<ServicePage> {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          if (service.processType.isNotEmpty) ...[
-                            const SizedBox(width: 8),
-                            _buildTag(
-                              service.processType,
-                              const Color(0xFFF0FDF4),
-                              const Color(0xFF16A34A),
-                            ),
-                          ],
                         ],
                       ),
                       const SizedBox(height: 8),
