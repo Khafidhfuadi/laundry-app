@@ -358,7 +358,7 @@ class _AddEditServiceBottomSheetState
                     const SizedBox(height: 16),
 
                     const Text(
-                      'Jenis Produk / Varian',
+                      'Jenis Varian',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
@@ -381,7 +381,7 @@ class _AddEditServiceBottomSheetState
                           ),
                         ),
                         child: const Text(
-                          'Belum ada jenis produk. Tambahkan jenis produk (varian) untuk layanan ini.',
+                          'Belum ada jenis varian. Tambahkan jenis varian untuk layanan ini.',
                           textAlign: TextAlign.center,
                           style: TextStyle(fontSize: 13, color: _textMuted),
                         ),
@@ -402,7 +402,7 @@ class _AddEditServiceBottomSheetState
                       child: OutlinedButton.icon(
                         onPressed: _onAddVariant,
                         icon: const Icon(Icons.add, size: 18),
-                        label: const Text('Tambah Jenis Produk'),
+                        label: const Text('Tambah Varian'),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           foregroundColor: _primary,

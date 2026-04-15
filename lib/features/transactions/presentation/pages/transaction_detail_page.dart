@@ -71,43 +71,228 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
     if (_isUpdatingStatus) return;
 
     final nextStatus = _getNextStatus(trx.status);
+    int? plasticBagCount;
+
+    if (nextStatus == 'READY') {
+      plasticBagCount = await _promptPlasticBagCount(trx);
+      if (plasticBagCount == null) return;
+    }
 
     setState(() => _isUpdatingStatus = true);
 
     final success = await ref
         .read(transactionControllerProvider.notifier)
-        .updateStatus(trx.id, nextStatus);
+        .updateStatus(trx.id, nextStatus, plasticBagCount: plasticBagCount);
 
-    if (mounted) {
-      setState(() => _isUpdatingStatus = false);
-      if (success) {
-        // Refresh detail
-        ref.invalidate(transactionDetailProvider(widget.transactionId));
+    if (!mounted) return;
 
-        // Auto-open WhatsApp template when status moves to READY.
-        if (nextStatus == 'READY') {
-          await _sendStatusUpdateWhatsApp(trx, nextStatus);
-          if (!mounted) return;
-        }
+    setState(() => _isUpdatingStatus = false);
+    if (success) {
+      // Refresh detail
+      ref.invalidate(transactionDetailProvider(widget.transactionId));
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Status berhasil diperbarui')),
+      TransactionEntity? refreshedTrx;
+      try {
+        refreshedTrx = await ref.read(
+          transactionDetailProvider(widget.transactionId).future,
         );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Gagal memperbarui status'),
-            backgroundColor: Colors.red,
-          ),
-        );
+      } catch (_) {}
+
+      // Auto-open WhatsApp receipt when status moves to READY.
+      if (nextStatus == 'READY') {
+        await _sendReadyReceiptWhatsApp(refreshedTrx ?? trx);
+        if (!mounted) return;
       }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Status berhasil diperbarui')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Gagal memperbarui status'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
-  Future<void> _sendStatusUpdateWhatsApp(
-    TransactionEntity trx,
-    String nextStatus,
-  ) async {
+  Future<int?> _promptPlasticBagCount(TransactionEntity trx) async {
+    String inputValue = trx.plasticBagCount > 0
+        ? trx.plasticBagCount.toString()
+        : '';
+    String? errorText;
+
+    final result = await showModalBottomSheet<int>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return SafeArea(
+              child: AnimatedPadding(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+                ),
+                child: SingleChildScrollView(
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(24),
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 42,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE2E8F0),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        const Text(
+                          'Input Plastik Bungkus',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF1E293B),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Tarif otomatis ${_formatter.format(TransactionEntity.defaultPackagingFeePerPlastic)} per plastik.',
+                          style: TextStyle(
+                            fontSize: 13,
+                            height: 1.5,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          initialValue: inputValue,
+                          autofocus: true,
+                          keyboardType: TextInputType.number,
+                          onChanged: (value) => inputValue = value,
+                          decoration: InputDecoration(
+                            labelText: 'Jumlah plastik',
+                            hintText: 'Contoh: 2',
+                            errorText: errorText,
+                            prefixIcon: const Icon(Icons.inventory_2_outlined),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                          ),
+                          child: Text(
+                            'Masukkan `0` bila tidak ada plastik tambahan.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[700],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                style: OutlinedButton.styleFrom(
+                                  minimumSize: const Size.fromHeight(48),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: const Text('Batal'),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: FilledButton(
+                                onPressed: () {
+                                  final value = int.tryParse(inputValue.trim());
+                                  if (value == null || value < 0) {
+                                    setModalState(() {
+                                      errorText = 'Masukkan angka 0 atau lebih';
+                                    });
+                                    return;
+                                  }
+
+                                  Navigator.pop(ctx, value);
+                                },
+                                style: FilledButton.styleFrom(
+                                  minimumSize: const Size.fromHeight(48),
+                                  backgroundColor: const Color(0xFF0F62FE),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: const Text('Simpan'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+    return result;
+  }
+
+  List<String> _buildTransactionSummaryLines(TransactionEntity trx) {
+    final itemLines = trx.items.map((item) {
+      final serviceName = item.serviceVariant?.service?.name ?? 'Layanan';
+      final variantName = item.serviceVariant?.variantName ?? '';
+      final unitType = item.serviceVariant?.unitType ?? 'Kg';
+      final label = variantName.isEmpty
+          ? serviceName
+          : '$serviceName - $variantName';
+      final unitPrice = item.quantity > 0
+          ? item.subtotal / item.quantity
+          : item.subtotal;
+
+      return '$label (${_formatQuantity(item.quantity)} $unitType x ${_formatter.format(unitPrice)}/$unitType) = ${_formatter.format(item.subtotal)}';
+    }).toList();
+
+    if (trx.plasticBagCount > 0) {
+      itemLines.add(
+        'Biaya bungkus (${trx.plasticBagCount} plastik x ${_formatter.format(trx.packagingFeePerPlastic)}) = ${_formatter.format(trx.packagingFeeTotal)}',
+      );
+    }
+
+    return itemLines;
+  }
+
+  Future<void> _sendReadyReceiptWhatsApp(TransactionEntity trx) async {
     final customer = trx.customer;
     if (customer == null || customer.phoneNumber.trim().isEmpty) {
       if (!mounted) return;
@@ -122,11 +307,19 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
       return;
     }
 
-    final success = await WhatsAppHelper.sendStatusUpdate(
+    final success = await WhatsAppHelper.sendTransactionSummary(
       phoneNumber: customer.phoneNumber,
       customerName: customer.name,
       transactionCode: trx.transactionCode,
-      status: nextStatus,
+      transactionDate: trx.createdAt,
+      estimatedCompletionDate: trx.estimatedCompletionDate,
+      itemLines: _buildTransactionSummaryLines(trx),
+      totalAmount: trx.totalPrice,
+      paidAmount: trx.paidAmount,
+      paymentStatus: trx.paymentStatus,
+      outletName: trx.outlet?.name ?? 'Laundry App',
+      perfumeName: trx.perfume?.name ?? '',
+      notes: trx.notes,
     );
 
     if (!mounted || success) return;
@@ -237,7 +430,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
     setState(() => _isSendingWhatsApp = true);
 
     bool success;
-    if (trx.status == 'READY') {
+    if (trx.status == 'PROCESS') {
       success = await WhatsAppHelper.sendStatusUpdate(
         phoneNumber: customer.phoneNumber,
         customerName: customer.name,
@@ -245,26 +438,13 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
         status: trx.status,
       );
     } else {
-      final itemLines = trx.items.map((item) {
-        final serviceName = item.serviceVariant?.service?.name ?? 'Layanan';
-        final variantName = item.serviceVariant?.variantName ?? '';
-        final unitType = item.serviceVariant?.unitType ?? 'Kg';
-        final label = variantName.isEmpty
-            ? serviceName
-            : '$serviceName - $variantName';
-        final unitPrice = item.quantity > 0
-            ? item.subtotal / item.quantity
-            : item.subtotal;
-        return '$label (${_formatQuantity(item.quantity)} $unitType x ${_formatter.format(unitPrice)}/$unitType) = ${_formatter.format(item.subtotal)}';
-      }).toList();
-
       success = await WhatsAppHelper.sendTransactionSummary(
         phoneNumber: customer.phoneNumber,
         customerName: customer.name,
         transactionCode: trx.transactionCode,
         transactionDate: trx.createdAt,
         estimatedCompletionDate: trx.estimatedCompletionDate,
-        itemLines: itemLines,
+        itemLines: _buildTransactionSummaryLines(trx),
         totalAmount: trx.totalPrice,
         paidAmount: trx.paidAmount,
         paymentStatus: trx.paymentStatus,
@@ -916,6 +1096,8 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
   // ─── ITEMIZED BILL ────────────────────────────────────────────────────
 
   Widget _buildItemizedBill(TransactionEntity trx) {
+    final showPackagingFee = trx.readyAt != null || trx.plasticBagCount > 0;
+
     return Container(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -987,18 +1169,79 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
             );
           }),
 
-          // Subtotal
+          // Pricing summary
           const Divider(color: Color(0xFFE2E8F0)),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'SUBTOTAL',
+                'TOTAL LAYANAN',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   color: Colors.grey[500],
+                  letterSpacing: 0.5,
+                ),
+              ),
+              Text(
+                _formatter.format(trx.serviceSubtotal),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1E293B),
+                ),
+              ),
+            ],
+          ),
+          if (showPackagingFee) ...[
+            const SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'BIAYA BUNGKUS',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.grey[500],
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${trx.plasticBagCount} plastik x ${_formatter.format(trx.packagingFeePerPlastic)}',
+                        style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  _formatter.format(trx.packagingFeeTotal),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'TOTAL TAGIHAN',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF1E293B),
                   letterSpacing: 0.5,
                 ),
               ),

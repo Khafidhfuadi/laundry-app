@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 import 'dart:math';
 
 import '../../domain/entities/transaction_entity.dart';
-import '../../../customers/domain/entities/customer_entity.dart';
 import '../../../services/domain/entities/service_entity.dart';
 import '../controllers/transaction_controller.dart';
 import '../../../customers/presentation/controllers/customer_controller.dart';
@@ -14,8 +13,6 @@ import '../../../services/presentation/controllers/service_controller.dart';
 import '../../../outlet/presentation/controllers/outlet_controller.dart';
 import '../../../outlet/presentation/controllers/active_outlet_controller.dart';
 import '../../../perfumes/presentation/controllers/perfume_controller.dart';
-import '../../../perfumes/domain/entities/perfume_entity.dart';
-import '../../../../core/utils/whatsapp_helper.dart';
 
 class AddTransactionPage extends ConsumerStatefulWidget {
   const AddTransactionPage({super.key});
@@ -1460,15 +1457,6 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
   void _submitEvent() async {
     final activeOutletState = ref.read(activeOutletProvider);
     final outletId = activeOutletState.value?.id;
-    final customerState = ref.read(customerControllerProvider);
-    final customers = customerState.asData?.value ?? const <CustomerEntity>[];
-    CustomerEntity? selectedCustomer;
-    for (final customer in customers) {
-      if (customer.id == _selectedCustomerId) {
-        selectedCustomer = customer;
-        break;
-      }
-    }
 
     if (!_formKey.currentState!.validate() ||
         _items.isEmpty ||
@@ -1550,68 +1538,10 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
     if (mounted) {
       setState(() => _isLoading = false);
       if (success) {
-        bool waOpened = false;
-        if (selectedCustomer != null &&
-            selectedCustomer.phoneNumber.trim().isNotEmpty) {
-          final formatter = NumberFormat.currency(
-            locale: 'id_ID',
-            symbol: 'Rp',
-            decimalDigits: 0,
-          );
-          final perfumes = ref
-              .read(perfumeControllerProvider)
-              .maybeWhen(
-                data: (value) => value,
-                orElse: () => const <PerfumeEntity>[],
-              );
-          String selectedPerfumeName = '';
-          if (_selectedPerfumeId != null) {
-            for (final p in perfumes) {
-              if (p.id == _selectedPerfumeId) {
-                selectedPerfumeName = p.name;
-                break;
-              }
-            }
-          }
-          final itemLines = _items.map((item) {
-            final serviceName = item.serviceVariant?.service?.name ?? 'Layanan';
-            final variantName = item.serviceVariant?.variantName ?? '';
-            final unitType = item.serviceVariant?.unitType ?? 'Kg';
-            final label = variantName.isEmpty
-                ? serviceName
-                : '$serviceName - $variantName';
-            final unitPrice = item.quantity > 0
-                ? item.subtotal / item.quantity
-                : item.subtotal;
-            return '$label (${_formatQuantity(item.quantity)} $unitType x ${formatter.format(unitPrice)}/$unitType) = ${formatter.format(item.subtotal)}';
-          }).toList();
-
-          waOpened = await WhatsAppHelper.sendTransactionSummary(
-            phoneNumber: selectedCustomer.phoneNumber,
-            customerName: selectedCustomer.name,
-            transactionCode: generatedCode,
-            transactionDate: newTransaction.createdAt,
-            estimatedCompletionDate: newTransaction.estimatedCompletionDate,
-            itemLines: itemLines,
-            totalAmount: newTransaction.totalPrice,
-            paidAmount: newTransaction.paidAmount,
-            paymentStatus: newTransaction.paymentStatus,
-            outletName: activeOutletState.value?.name ?? 'Laundry App',
-            perfumeName: selectedPerfumeName,
-            notes: newTransaction.notes,
-          );
-        }
-
         if (!mounted) return;
         context.pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              waOpened
-                  ? 'Transaksi berhasil dibuat, WhatsApp pelanggan sudah dibuka.'
-                  : 'Berhasil membuat transaksi baru.',
-            ),
-          ),
+          const SnackBar(content: Text('Berhasil membuat transaksi baru.')),
         );
       } else {
         print('Gagal membuat transaksi ${newTransaction.toJson()}');

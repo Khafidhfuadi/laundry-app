@@ -281,16 +281,20 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                         ),
 
                         const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.notifications_none_rounded,
-                            color: Color(0xFF475569),
-                            size: 20,
+                        InkWell(
+                          onTap: () => context.push('/profile'),
+                          borderRadius: BorderRadius.circular(10),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(
+                              Icons.notifications_none_rounded,
+                              color: Color(0xFF475569),
+                              size: 20,
+                            ),
                           ),
                         ),
                       ],
@@ -378,26 +382,26 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                               ],
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          InkWell(
-                            onTap: () => context.push('/select-outlet'),
-                            borderRadius: BorderRadius.circular(9),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 7,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEFF5FF),
-                                borderRadius: BorderRadius.circular(9),
-                              ),
-                              child: const Icon(
-                                Icons.storefront_outlined,
-                                size: 16,
-                                color: Color(0xFF1D4ED8),
-                              ),
-                            ),
-                          ),
+                          // const SizedBox(width: 8),
+                          // InkWell(
+                          //   onTap: () => context.push('/select-outlet'),
+                          //   borderRadius: BorderRadius.circular(9),
+                          //   child: Container(
+                          //     padding: const EdgeInsets.symmetric(
+                          //       horizontal: 8,
+                          //       vertical: 7,
+                          //     ),
+                          //     decoration: BoxDecoration(
+                          //       color: const Color(0xFFEFF5FF),
+                          //       borderRadius: BorderRadius.circular(9),
+                          //     ),
+                          //     child: const Icon(
+                          //       Icons.storefront_outlined,
+                          //       size: 16,
+                          //       color: Color(0xFF1D4ED8),
+                          //     ),
+                          //   ),
+                          // ),
                         ],
                       ),
                     ),

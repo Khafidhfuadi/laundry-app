@@ -45,6 +45,8 @@ class TransactionItemEntity {
 }
 
 class TransactionEntity {
+  static const double defaultPackagingFeePerPlastic = 2000;
+
   final String id;
   final String transactionCode;
   final String outletId;
@@ -54,6 +56,8 @@ class TransactionEntity {
   final String paymentStatus;
   final double paidAmount;
   final double refundAmount;
+  final int plasticBagCount;
+  final double packagingFeePerPlastic;
   final String notes;
   final String? perfumeId;
   final DateTime estimatedCompletionDate;
@@ -80,6 +84,8 @@ class TransactionEntity {
     required this.paymentStatus,
     required this.paidAmount,
     this.refundAmount = 0,
+    this.plasticBagCount = 0,
+    this.packagingFeePerPlastic = defaultPackagingFeePerPlastic,
     required this.notes,
     this.perfumeId,
     required this.estimatedCompletionDate,
@@ -95,6 +101,17 @@ class TransactionEntity {
     this.items = const [],
   });
 
+  double get packagingFeeTotal => plasticBagCount * packagingFeePerPlastic;
+
+  double get serviceSubtotal {
+    if (items.isNotEmpty) {
+      return items.fold(0.0, (sum, item) => sum + item.subtotal);
+    }
+
+    final subtotal = totalPrice - packagingFeeTotal;
+    return subtotal < 0 ? 0 : subtotal;
+  }
+
   factory TransactionEntity.fromJson(Map<String, dynamic> json) {
     return TransactionEntity(
       id: json['id'] as String,
@@ -106,6 +123,10 @@ class TransactionEntity {
       paymentStatus: json['payment_status'] as String? ?? 'UNPAID',
       paidAmount: (json['paid_amount'] as num?)?.toDouble() ?? 0.0,
       refundAmount: (json['refund_amount'] as num?)?.toDouble() ?? 0.0,
+      plasticBagCount: json['plastic_bag_count'] as int? ?? 0,
+      packagingFeePerPlastic:
+          (json['packaging_fee_per_plastic'] as num?)?.toDouble() ??
+          defaultPackagingFeePerPlastic,
       notes: json['notes'] ?? '',
       perfumeId: json['perfume_id'] as String?,
       estimatedCompletionDate: DateTime.parse(
@@ -155,6 +176,8 @@ class TransactionEntity {
       'payment_status': paymentStatus,
       'paid_amount': paidAmount,
       'refund_amount': refundAmount,
+      'plastic_bag_count': plasticBagCount,
+      'packaging_fee_per_plastic': packagingFeePerPlastic,
       'notes': notes,
       if (perfumeId != null) 'perfume_id': perfumeId,
       'estimated_completion_date': estimatedCompletionDate

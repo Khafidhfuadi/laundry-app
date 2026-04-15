@@ -12,8 +12,9 @@ abstract class TransactionRemoteDatasource {
   Future<TransactionEntity> createTransaction(TransactionEntity transaction);
   Future<TransactionEntity> updateTransactionStatus(
     String id,
-    String newStatus,
-  );
+    String newStatus, {
+    int? plasticBagCount,
+  });
   Future<TransactionEntity> checkoutPayment(String id, double amountPaid);
 }
 
@@ -53,6 +54,13 @@ class TransactionRemoteDatasourceImpl implements TransactionRemoteDatasource {
     return copy;
   }
 
+  Map<String, dynamic> _withoutPackagingColumns(Map<String, dynamic> payload) {
+    final copy = Map<String, dynamic>.from(payload);
+    copy.remove('plastic_bag_count');
+    copy.remove('packaging_fee_per_plastic');
+    return copy;
+  }
+
   Map<String, dynamic> _withoutUnsupportedColumns(
     Map<String, dynamic> payload,
   ) {
@@ -60,6 +68,8 @@ class TransactionRemoteDatasourceImpl implements TransactionRemoteDatasource {
     copy.remove('payment_received_at');
     copy.remove('refund_amount');
     copy.remove('refund_at');
+    copy.remove('plastic_bag_count');
+    copy.remove('packaging_fee_per_plastic');
     return copy;
   }
 
@@ -140,6 +150,13 @@ class TransactionRemoteDatasourceImpl implements TransactionRemoteDatasource {
             .insert(_withoutPaymentReceivedAt(payload))
             .select()
             .single();
+      } else if (message.contains('plastic_bag_count') ||
+          message.contains('packaging_fee_per_plastic')) {
+        headerResponse = await supabaseClient
+            .from('transactions')
+            .insert(_withoutPackagingColumns(payload))
+            .select()
+            .single();
       } else if (message.contains('refund_amount') ||
           message.contains('refund_at')) {
         headerResponse = await supabaseClient
@@ -171,8 +188,9 @@ class TransactionRemoteDatasourceImpl implements TransactionRemoteDatasource {
   @override
   Future<TransactionEntity> updateTransactionStatus(
     String id,
-    String newStatus,
-  ) async {
+    String newStatus, {
+    int? plasticBagCount,
+  }) async {
     final tx = await getTransactionById(id);
     final Map<String, dynamic> updates = {'status': newStatus};
     final now = DateTime.now().toUtc().toIso8601String();
@@ -180,7 +198,16 @@ class TransactionRemoteDatasourceImpl implements TransactionRemoteDatasource {
     if (newStatus == 'PROCESS') {
       updates['processed_at'] = now;
     } else if (newStatus == 'READY') {
+      final bagCount = plasticBagCount ?? tx.plasticBagCount;
+      final bagFeePerPlastic = tx.packagingFeePerPlastic > 0
+          ? tx.packagingFeePerPlastic
+          : TransactionEntity.defaultPackagingFeePerPlastic;
+
       updates['ready_at'] = now;
+      updates['plastic_bag_count'] = bagCount;
+      updates['packaging_fee_per_plastic'] = bagFeePerPlastic;
+      updates['total_price'] =
+          tx.serviceSubtotal + (bagCount * bagFeePerPlastic);
     } else if (newStatus == 'COMPLETED' || newStatus == 'PICKED_UP') {
       updates['completed_at'] = now;
     } else if (newStatus == 'CANCELLED') {
@@ -199,6 +226,12 @@ class TransactionRemoteDatasourceImpl implements TransactionRemoteDatasource {
         await supabaseClient
             .from('transactions')
             .update(_withoutRefundColumns(updates))
+            .eq('id', id);
+      } else if (message.contains('plastic_bag_count') ||
+          message.contains('packaging_fee_per_plastic')) {
+        await supabaseClient
+            .from('transactions')
+            .update(_withoutPackagingColumns(updates))
             .eq('id', id);
       } else if (message.contains('payment_received_at')) {
         await supabaseClient

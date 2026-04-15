@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/presentation/widgets/custom_bottom_nav.dart';
 import '../../../authentication/presentation/controllers/auth_controller.dart';
 import '../../../outlet/presentation/controllers/active_outlet_controller.dart';
 import 'package:go_router/go_router.dart';
@@ -27,12 +26,45 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       body: SingleChildScrollView(
         child: Column(
           children: [
+            SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () {
+                        if (context.canPop()) {
+                          context.pop();
+                        } else {
+                          context.go('/dashboard');
+                        }
+                      },
+                      icon: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: Color(0xFF1E293B),
+                        size: 18,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Text(
+                      'Profil',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1E293B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             Container(color: const Color(0xFFF1F5F9), height: 1), // Top border
             // 1. User Header Section
             Container(
               width: double.infinity,
               color: Colors.white,
-              padding: const EdgeInsets.only(top: 60, bottom: 20),
+              padding: const EdgeInsets.only(top: 24, bottom: 20),
               child: Column(
                 children: [
                   Stack(
@@ -212,11 +244,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           ],
         ),
       ),
-
-      // 5. Custom Bottom Nav Bar with FAB
-      floatingActionButton: const CustomBottomNavFab(),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 3),
     );
   }
 

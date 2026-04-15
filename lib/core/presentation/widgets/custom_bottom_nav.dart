@@ -14,7 +14,7 @@ class CustomBottomNavFab extends StatelessWidget {
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0F62FE).withOpacity(0.3),
+            color: const Color(0xFF0F62FE).withValues(alpha: 0.3),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
@@ -46,7 +46,7 @@ class CustomBottomNavBar extends StatelessWidget {
     } else if (index == 2) {
       context.go('/reports');
     } else if (index == 3) {
-      context.go('/profile');
+      context.go('/expenses');
     }
   }
 
@@ -57,7 +57,7 @@ class CustomBottomNavBar extends StatelessWidget {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 20,
             offset: const Offset(0, -5),
           ),
@@ -96,9 +96,9 @@ class CustomBottomNavBar extends StatelessWidget {
               ),
               _buildBottomNavItem(
                 context,
-                Icons.person_outline,
-                Icons.person,
-                'Profil',
+                Icons.wallet_outlined,
+                Icons.wallet,
+                'Pengeluaran',
                 3,
               ),
             ],

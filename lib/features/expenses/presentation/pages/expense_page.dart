@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/presentation/widgets/custom_bottom_nav.dart';
 import '../../domain/entities/expense_entity.dart';
 import '../controllers/expense_controller.dart';
 import '../../../outlet/presentation/controllers/active_outlet_controller.dart';
@@ -379,6 +380,9 @@ class _ExpensePageState extends ConsumerState<ExpensePage> {
           ),
         ),
       ),
+      floatingActionButton: const CustomBottomNavFab(),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      bottomNavigationBar: const CustomBottomNavBar(selectedIndex: 3),
     );
   }
 

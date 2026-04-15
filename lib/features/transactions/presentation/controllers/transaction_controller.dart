@@ -40,8 +40,16 @@ class TransactionController extends AsyncNotifier<List<TransactionEntity>> {
     state = await AsyncValue.guard(() => _fetchTransactions());
   }
 
-  Future<bool> updateStatus(String id, String newStatus) async {
-    final result = await _repository.updateTransactionStatus(id, newStatus);
+  Future<bool> updateStatus(
+    String id,
+    String newStatus, {
+    int? plasticBagCount,
+  }) async {
+    final result = await _repository.updateTransactionStatus(
+      id,
+      newStatus,
+      plasticBagCount: plasticBagCount,
+    );
     return result.fold((failure) => false, (_) {
       // Hanya menyegarkan list yang ada alih-alih loading full
       loadTransactions();
