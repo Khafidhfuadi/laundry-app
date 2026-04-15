@@ -285,7 +285,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
 
     if (trx.plasticBagCount > 0) {
       itemLines.add(
-        'Biaya bungkus (${trx.plasticBagCount} plastik x ${_formatter.format(trx.packagingFeePerPlastic)}) = ${_formatter.format(trx.packagingFeeTotal)}',
+        'Biaya bungkus (${trx.plasticBagCount} plastik laundry x ${_formatter.format(trx.packagingFeePerPlastic)}) = ${_formatter.format(trx.packagingFeeTotal)}',
       );
     }
 
