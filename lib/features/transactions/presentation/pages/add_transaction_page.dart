@@ -7,6 +7,7 @@ import 'dart:math';
 import '../../domain/entities/transaction_entity.dart';
 import '../../../services/domain/entities/service_entity.dart';
 import '../controllers/transaction_controller.dart';
+import '../../../../core/utils/whatsapp_helper.dart';
 import '../../../customers/presentation/controllers/customer_controller.dart';
 import '../../../customers/presentation/widgets/add_customer_bottom_sheet.dart';
 import '../../../services/presentation/controllers/service_controller.dart';
@@ -36,6 +37,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
   // Tagihan
   String _paymentStatus = 'UNPAID';
   final _paidAmountController = TextEditingController();
+  final _plasticBagCountController = TextEditingController(text: '');
 
   // Catatan
   final _notesController = TextEditingController();
@@ -60,6 +62,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
   @override
   void dispose() {
     _paidAmountController.dispose();
+    _plasticBagCountController.dispose();
     _notesController.dispose();
     super.dispose();
   }
@@ -68,6 +71,19 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
     return _items.fold(0.0, (sum, item) => sum + item.subtotal);
   }
 
+  int get _plasticBagCount {
+    final parsed = int.tryParse(_plasticBagCountController.text.trim());
+    if (parsed == null || parsed < 0) return 0;
+    return parsed;
+  }
+
+  double get _packagingFeePerPlastic =>
+      TransactionEntity.defaultPackagingFeePerPlastic;
+
+  double get _packagingFeeTotal => _plasticBagCount * _packagingFeePerPlastic;
+
+  double get _grandTotal => _totalPrice + _packagingFeeTotal;
+
   String _formatQuantity(double quantity) {
     final isWhole = quantity == quantity.roundToDouble();
     if (isWhole) return quantity.toInt().toString();
@@ -75,6 +91,95 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
         .toStringAsFixed(2)
         .replaceAll(RegExp(r'0+$'), '')
         .replaceAll(RegExp(r'\.$'), '');
+  }
+
+  List<String> _buildTransactionSummaryLines() {
+    final formatter = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp ',
+      decimalDigits: 0,
+    );
+
+    final itemLines = _items.map((item) {
+      final serviceName = item.serviceVariant?.service?.name ?? 'Layanan';
+      final variantName = item.serviceVariant?.variantName ?? '';
+      final unitType = item.serviceVariant?.unitType ?? 'Kg';
+      final label = variantName.isEmpty
+          ? serviceName
+          : '$serviceName - $variantName';
+      final unitPrice = item.quantity > 0
+          ? item.subtotal / item.quantity
+          : item.subtotal;
+
+      return '$label (${_formatQuantity(item.quantity)} $unitType x ${formatter.format(unitPrice)}/$unitType) = ${formatter.format(item.subtotal)}';
+    }).toList();
+
+    if (_plasticBagCount > 0) {
+      itemLines.add(
+        'Biaya bungkus ($_plasticBagCount plastik laundry x ${formatter.format(TransactionEntity.defaultPackagingFeePerPlastic)}) = ${formatter.format(_packagingFeeTotal)}',
+      );
+    }
+
+    return itemLines;
+  }
+
+  Future<void> _sendDigitalReceiptWhatsApp(
+    TransactionEntity trx, {
+    required String customerName,
+    required String customerPhone,
+  }) async {
+    if (customerPhone.trim().isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Transaksi berhasil, tapi nomor WhatsApp pelanggan tidak tersedia',
+          ),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final perfumeName = ref
+        .read(perfumeControllerProvider)
+        .maybeWhen(
+          data: (list) {
+            if (_selectedPerfumeId == null) return '';
+            try {
+              return list.firstWhere((e) => e.id == _selectedPerfumeId).name;
+            } catch (_) {
+              return '';
+            }
+          },
+          orElse: () => '',
+        );
+
+    final outletName =
+        ref.read(activeOutletProvider).value?.name ?? 'Laundry App';
+
+    final success = await WhatsAppHelper.sendTransactionSummary(
+      phoneNumber: customerPhone,
+      customerName: customerName,
+      transactionCode: trx.transactionCode,
+      transactionDate: trx.createdAt,
+      estimatedCompletionDate: trx.estimatedCompletionDate,
+      itemLines: _buildTransactionSummaryLines(),
+      totalAmount: trx.totalPrice,
+      paidAmount: trx.paidAmount,
+      paymentStatus: trx.paymentStatus,
+      outletName: outletName,
+      perfumeName: perfumeName,
+      notes: trx.notes,
+    );
+
+    if (!mounted || success) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Transaksi berhasil, tapi gagal membuka WhatsApp nota'),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
 
   DateTime get _estimatedCompletionDate {
@@ -361,11 +466,18 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setStateModal) {
-            final filtered = customerState.value!.where((c) {
-              if (searchQuery.isEmpty) return true;
-              return c.name.toLowerCase().contains(searchQuery.toLowerCase()) ||
-                  c.phoneNumber.contains(searchQuery);
-            }).toList();
+            final filtered =
+                customerState.value!.where((c) {
+                  if (searchQuery.isEmpty) return true;
+                  return c.name.toLowerCase().contains(
+                        searchQuery.toLowerCase(),
+                      ) ||
+                      c.phoneNumber.contains(searchQuery);
+                }).toList()..sort(
+                  (a, b) => a.name.trim().toLowerCase().compareTo(
+                    b.name.trim().toLowerCase(),
+                  ),
+                );
 
             return DraggableScrollableSheet(
               initialChildSize: 0.85,
@@ -1457,6 +1569,18 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
   void _submitEvent() async {
     final activeOutletState = ref.read(activeOutletProvider);
     final outletId = activeOutletState.value?.id;
+    final selectedCustomer = ref
+        .read(customerControllerProvider)
+        .maybeWhen(
+          data: (list) {
+            try {
+              return list.firstWhere((e) => e.id == _selectedCustomerId);
+            } catch (_) {
+              return null;
+            }
+          },
+          orElse: () => null,
+        );
 
     if (!_formKey.currentState!.validate() ||
         _items.isEmpty ||
@@ -1481,7 +1605,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
 
     if (_paymentStatus == 'PAID') {
       // Lunas Langsung: bayar penuh
-      paidAmount = _totalPrice;
+      paidAmount = _grandTotal;
       actualPaymentStatus = 'PAID';
     } else if (_paymentStatus == 'PARTIAL') {
       // DP / Sebagian: ambil dari input
@@ -1490,7 +1614,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
             _paidAmountController.text.trim().replaceAll(',', '.'),
           ) ??
           0.0;
-      if (paidAmount > _totalPrice) {
+      if (paidAmount > _grandTotal) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -1501,7 +1625,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
         }
         return;
       }
-      if (paidAmount >= _totalPrice && _totalPrice > 0) {
+      if (paidAmount >= _grandTotal && _grandTotal > 0) {
         actualPaymentStatus = 'PAID';
       } else if (paidAmount > 0) {
         actualPaymentStatus = 'PARTIAL';
@@ -1519,10 +1643,12 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
       transactionCode: generatedCode,
       outletId: outletId,
       customerId: _selectedCustomerId!,
-      totalPrice: _totalPrice,
+      totalPrice: _grandTotal,
       status: 'PROCESS',
       paymentStatus: actualPaymentStatus,
       paidAmount: paidAmount,
+      plasticBagCount: _plasticBagCount,
+      packagingFeePerPlastic: TransactionEntity.defaultPackagingFeePerPlastic,
       notes: _notesController.text,
       perfumeId: _selectedPerfumeId,
       estimatedCompletionDate: _estimatedCompletionDate,
@@ -1538,6 +1664,11 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
     if (mounted) {
       setState(() => _isLoading = false);
       if (success) {
+        await _sendDigitalReceiptWhatsApp(
+          newTransaction,
+          customerName: selectedCustomer?.name ?? 'Pelanggan',
+          customerPhone: selectedCustomer?.phoneNumber ?? '',
+        );
         if (!mounted) return;
         context.pop();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -2271,6 +2402,56 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                 ),
               ],
             ),
+            const SizedBox(height: 16),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Biaya Bungkus',
+                  style: TextStyle(
+                    color: Color(0xFF1E293B),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: _plasticBagCountController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Jumlah plastik',
+                    // hintText: 'Contoh: 2',
+                    border: const OutlineInputBorder(),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    helperText:
+                        'Tarif otomatis ${formatter.format(TransactionEntity.defaultPackagingFeePerPlastic)} per plastik',
+                    errorText: () {
+                      final raw = _plasticBagCountController.text.trim();
+                      if (raw.isEmpty) return null;
+                      final value = int.tryParse(raw);
+                      if (value == null || value < 0) {
+                        return 'Isi angka 0 atau lebih';
+                      }
+                      return null;
+                    }(),
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+                // const SizedBox(height: 8),
+                // Align(
+                //   alignment: Alignment.centerRight,
+                //   child: Text(
+                //     'Biaya bungkus: ${formatter.format(_packagingFeeTotal)}',
+                //     style: const TextStyle(
+                //       color: Color(0xFF64748B),
+                //       fontWeight: FontWeight.w600,
+                //     ),
+                //   ),
+                // ),
+              ],
+            ),
             if (_paymentStatus == 'PARTIAL') ...[
               const SizedBox(height: 12),
               TextFormField(
@@ -2288,7 +2469,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                     if (raw.isEmpty) return null;
                     final value = double.tryParse(raw.replaceAll(',', '.'));
                     if (value == null) return 'Masukkan angka yang valid';
-                    if (value > _totalPrice) {
+                    if (value > _grandTotal) {
                       return 'DP tidak boleh lebih dari total tagihan';
                     }
                     if (value < 0) return 'DP tidak boleh negatif';
@@ -2308,7 +2489,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'Total Tagihan',
+                  'Subtotal Layanan',
                   style: TextStyle(
                     color: Color(0xFF475569),
                     fontWeight: FontWeight.w600,
@@ -2316,6 +2497,50 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                 ),
                 Text(
                   formatter.format(_totalPrice),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF334155),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Biaya Bungkus',
+                  style: TextStyle(
+                    color: Color(0xFF475569),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  formatter.format(_packagingFeeTotal),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF334155),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            const Divider(color: Color(0xFFE2E8F0)),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Total Tagihan',
+                  style: TextStyle(
+                    color: Color(0xFF475569),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  formatter.format(_grandTotal),
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,

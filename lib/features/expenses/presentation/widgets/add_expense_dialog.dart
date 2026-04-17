@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../../domain/entities/expense_entity.dart';
 import '../controllers/expense_controller.dart';
 
@@ -31,6 +32,7 @@ class _AddExpenseBottomSheetState extends ConsumerState<AddExpenseBottomSheet> {
   final _nameController = TextEditingController();
   final _amountController = TextEditingController();
   final _notesController = TextEditingController();
+  DateTime _selectedExpenseDate = DateTime.now();
   String _selectedCategory = 'Operasional';
   bool _isLoading = false;
 
@@ -67,7 +69,7 @@ class _AddExpenseBottomSheetState extends ConsumerState<AddExpenseBottomSheet> {
       expenseName: _nameController.text.trim(),
       category: _selectedCategory,
       amount: double.tryParse(_amountController.text.trim()) ?? 0.0,
-      expenseDate: DateTime.now(),
+      expenseDate: _selectedExpenseDate,
       notes: _notesController.text.trim(),
     );
 
@@ -116,6 +118,32 @@ class _AddExpenseBottomSheetState extends ConsumerState<AddExpenseBottomSheet> {
         ),
       );
     }
+  }
+
+  Future<void> _pickExpenseDate() async {
+    if (_isLoading) return;
+
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedExpenseDate,
+      firstDate: DateTime(now.year - 5),
+      lastDate: DateTime(now.year + 5),
+      locale: const Locale('id', 'ID'),
+    );
+
+    if (picked == null) return;
+
+    setState(() {
+      _selectedExpenseDate = DateTime(
+        picked.year,
+        picked.month,
+        picked.day,
+        now.hour,
+        now.minute,
+        now.second,
+      );
+    });
   }
 
   @override
@@ -217,6 +245,8 @@ class _AddExpenseBottomSheetState extends ConsumerState<AddExpenseBottomSheet> {
                         return null;
                       },
                     ),
+                    const SizedBox(height: 12),
+                    _buildDateField(),
                     const SizedBox(height: 12),
                     _buildField(
                       controller: _notesController,
@@ -400,6 +430,63 @@ class _AddExpenseBottomSheetState extends ConsumerState<AddExpenseBottomSheet> {
             focusedErrorBorder: OutlineInputBorder(
               borderSide: const BorderSide(color: Color(0xFFEF4444)),
               borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDateField() {
+    final formattedDate = DateFormat(
+      'EEEE, dd MMMM yyyy',
+      'id_ID',
+    ).format(_selectedExpenseDate.toLocal());
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Tanggal Pengeluaran',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF475569),
+          ),
+        ),
+        const SizedBox(height: 6),
+        InkWell(
+          onTap: _pickExpenseDate,
+          borderRadius: BorderRadius.circular(14),
+          child: InputDecorator(
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 14,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderSide: const BorderSide(color: _border),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderSide: const BorderSide(color: _primary, width: 1.4),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              suffixIcon: const Icon(
+                Icons.calendar_month_outlined,
+                color: _textMuted,
+                size: 20,
+              ),
+            ),
+            child: Text(
+              formattedDate,
+              style: const TextStyle(
+                fontSize: 14,
+                color: _textDark,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ),

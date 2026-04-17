@@ -554,57 +554,63 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
 
               // 5. Quick Actions
               const Text(
-                'Aksi Cepat',
+                'Kelola Data',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF1E293B),
                 ),
               ),
-              const SizedBox(height: 16),
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 1.5,
+              Column(
                 children: [
-                  _buildQuickActionBtn(
-                    context,
-                    'Layanan',
-                    Icons.layers_outlined,
-                    const Color(0xFFE0E7FF),
-                    () => context.push('/services'),
-                    iconColor: const Color(0xFF0F62FE),
+                  SizedBox(
+                    height: 86,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _buildQuickActionBtn(
+                            context,
+                            'Layanan',
+                            Icons.layers_outlined,
+                            const Color(0xFFE0E7FF),
+                            () => context.push('/services'),
+                            iconColor: const Color(0xFF0F62FE),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _buildQuickActionBtn(
+                            context,
+                            'Pelanggan',
+                            Icons.people,
+                            const Color(0xFFE0E7FF),
+                            () => context.push('/customers'),
+                            iconColor: const Color(0xFF0F62FE),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  _buildQuickActionBtn(
-                    context,
-                    'Pelanggan',
-                    Icons.people,
-                    const Color(0xFFE0E7FF),
-                    () => context.push('/customers'),
-                    iconColor: const Color(0xFF0F62FE),
-                  ),
-                  _buildQuickActionBtn(
-                    context,
-                    'Parfum',
-                    Icons.local_florist_outlined,
-                    const Color(0xFFE0E7FF),
-                    () => context.push('/perfumes'),
-                    iconColor: const Color(0xFF0F62FE),
-                  ),
-                  _buildQuickActionBtn(
-                    context,
-                    'Tambah Pengeluaran',
-                    Icons.wallet_outlined,
-                    const Color(0xFFE0E7FF),
-                    () => context.push('/expenses'),
-                    iconColor: const Color(0xFF0F62FE),
+                  SizedBox(
+                    height: 86,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _buildQuickActionBtn(
+                            context,
+                            'Parfum',
+                            Icons.local_florist_outlined,
+                            const Color(0xFFE0E7FF),
+                            () => context.push('/perfumes'),
+                            iconColor: const Color(0xFF0F62FE),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              // const SizedBox(height: 24),
 
               // 6. Recent Activities
               // Row(
@@ -757,11 +763,12 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(14),
       child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.02),
@@ -770,24 +777,28 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             ),
           ],
         ),
-        child: Column(
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
                 color: iconBgColor,
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: iconColor, size: 24),
+              child: Icon(icon, color: iconColor, size: 16),
             ),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1E293B),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1E293B),
+                ),
               ),
             ),
           ],

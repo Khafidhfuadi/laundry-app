@@ -71,18 +71,12 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
     if (_isUpdatingStatus) return;
 
     final nextStatus = _getNextStatus(trx.status);
-    int? plasticBagCount;
-
-    if (nextStatus == 'READY') {
-      plasticBagCount = await _promptPlasticBagCount(trx);
-      if (plasticBagCount == null) return;
-    }
 
     setState(() => _isUpdatingStatus = true);
 
     final success = await ref
         .read(transactionControllerProvider.notifier)
-        .updateStatus(trx.id, nextStatus, plasticBagCount: plasticBagCount);
+        .updateStatus(trx.id, nextStatus);
 
     if (!mounted) return;
 
@@ -98,9 +92,9 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
         );
       } catch (_) {}
 
-      // Auto-open WhatsApp receipt when status moves to READY.
+      // Auto-open WhatsApp status update when status moves to READY.
       if (nextStatus == 'READY') {
-        await _sendReadyReceiptWhatsApp(refreshedTrx ?? trx);
+        await _sendReadyStatusWhatsApp(refreshedTrx ?? trx);
         if (!mounted) return;
       }
 
@@ -116,156 +110,6 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
         ),
       );
     }
-  }
-
-  Future<int?> _promptPlasticBagCount(TransactionEntity trx) async {
-    String inputValue = trx.plasticBagCount > 0
-        ? trx.plasticBagCount.toString()
-        : '';
-    String? errorText;
-
-    final result = await showModalBottomSheet<int>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return SafeArea(
-              child: AnimatedPadding(
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOut,
-                padding: EdgeInsets.only(
-                  left: 16,
-                  right: 16,
-                  bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
-                ),
-                child: SingleChildScrollView(
-                  child: Container(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(24),
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Center(
-                          child: Container(
-                            width: 42,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE2E8F0),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        const Text(
-                          'Input Plastik Bungkus',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF1E293B),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Tarif otomatis ${_formatter.format(TransactionEntity.defaultPackagingFeePerPlastic)} per plastik.',
-                          style: TextStyle(
-                            fontSize: 13,
-                            height: 1.5,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          initialValue: inputValue,
-                          autofocus: true,
-                          keyboardType: TextInputType.number,
-                          onChanged: (value) => inputValue = value,
-                          decoration: InputDecoration(
-                            labelText: 'Jumlah plastik',
-                            hintText: 'Contoh: 2',
-                            errorText: errorText,
-                            prefixIcon: const Icon(Icons.inventory_2_outlined),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
-                          ),
-                          child: Text(
-                            'Masukkan `0` bila tidak ada plastik tambahan.',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[700],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () => Navigator.pop(ctx),
-                                style: OutlinedButton.styleFrom(
-                                  minimumSize: const Size.fromHeight(48),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                child: const Text('Batal'),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: FilledButton(
-                                onPressed: () {
-                                  final value = int.tryParse(inputValue.trim());
-                                  if (value == null || value < 0) {
-                                    setModalState(() {
-                                      errorText = 'Masukkan angka 0 atau lebih';
-                                    });
-                                    return;
-                                  }
-
-                                  Navigator.pop(ctx, value);
-                                },
-                                style: FilledButton.styleFrom(
-                                  minimumSize: const Size.fromHeight(48),
-                                  backgroundColor: const Color(0xFF0F62FE),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                child: const Text('Simpan'),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-    return result;
   }
 
   List<String> _buildTransactionSummaryLines(TransactionEntity trx) {
@@ -292,7 +136,7 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
     return itemLines;
   }
 
-  Future<void> _sendReadyReceiptWhatsApp(TransactionEntity trx) async {
+  Future<void> _sendReadyStatusWhatsApp(TransactionEntity trx) async {
     final customer = trx.customer;
     if (customer == null || customer.phoneNumber.trim().isEmpty) {
       if (!mounted) return;
@@ -307,25 +151,17 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
       return;
     }
 
-    final success = await WhatsAppHelper.sendTransactionSummary(
+    final success = await WhatsAppHelper.sendStatusUpdate(
       phoneNumber: customer.phoneNumber,
       customerName: customer.name,
       transactionCode: trx.transactionCode,
-      transactionDate: trx.createdAt,
-      estimatedCompletionDate: trx.estimatedCompletionDate,
-      itemLines: _buildTransactionSummaryLines(trx),
-      totalAmount: trx.totalPrice,
-      paidAmount: trx.paidAmount,
-      paymentStatus: trx.paymentStatus,
-      outletName: trx.outlet?.name ?? 'Laundry App',
-      perfumeName: trx.perfume?.name ?? '',
-      notes: trx.notes,
+      status: 'READY',
     );
 
     if (!mounted || success) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Status diperbarui, tapi gagal membuka WhatsApp'),
+        content: Text('Status diperbarui, tapi gagal membuka WhatsApp update'),
         backgroundColor: Colors.red,
       ),
     );

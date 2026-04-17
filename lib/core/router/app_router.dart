@@ -104,7 +104,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/expenses',
-        builder: (context, state) => const ExpensePage(),
+        pageBuilder: (context, state) =>
+            const NoTransitionPage(child: ExpensePage()),
       ),
       GoRoute(
         path: '/reports',

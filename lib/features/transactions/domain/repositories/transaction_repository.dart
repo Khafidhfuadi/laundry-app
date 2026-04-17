@@ -15,9 +15,8 @@ abstract class TransactionRepository {
   );
   Future<Either<Failure, TransactionEntity>> updateTransactionStatus(
     String id,
-    String newStatus, {
-    int? plasticBagCount,
-  });
+    String newStatus,
+  );
   Future<Either<Failure, TransactionEntity>> checkoutPayment(
     String id,
     double amountPaid,

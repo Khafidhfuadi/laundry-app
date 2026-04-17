@@ -164,7 +164,14 @@ class _CustomerPageState extends ConsumerState<CustomerPage> {
             Expanded(
               child: customerState.when(
                 data: (customers) {
-                  if (customers.isEmpty) {
+                  final sortedCustomers = List<CustomerEntity>.from(customers)
+                    ..sort(
+                      (a, b) => a.name.trim().toLowerCase().compareTo(
+                        b.name.trim().toLowerCase(),
+                      ),
+                    );
+
+                  if (sortedCustomers.isEmpty) {
                     return _buildEmptyState();
                   }
 
@@ -180,9 +187,9 @@ class _CustomerPageState extends ConsumerState<CustomerPage> {
                         horizontal: 20,
                         vertical: 4,
                       ),
-                      itemCount: customers.length,
+                      itemCount: sortedCustomers.length,
                       itemBuilder: (context, index) {
-                        final customer = customers[index];
+                        final customer = sortedCustomers[index];
                         return _buildCustomerCard(context, customer);
                       },
                     ),

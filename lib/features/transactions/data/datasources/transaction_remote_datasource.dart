@@ -12,9 +12,8 @@ abstract class TransactionRemoteDatasource {
   Future<TransactionEntity> createTransaction(TransactionEntity transaction);
   Future<TransactionEntity> updateTransactionStatus(
     String id,
-    String newStatus, {
-    int? plasticBagCount,
-  });
+    String newStatus,
+  );
   Future<TransactionEntity> checkoutPayment(String id, double amountPaid);
 }
 
@@ -188,9 +187,8 @@ class TransactionRemoteDatasourceImpl implements TransactionRemoteDatasource {
   @override
   Future<TransactionEntity> updateTransactionStatus(
     String id,
-    String newStatus, {
-    int? plasticBagCount,
-  }) async {
+    String newStatus,
+  ) async {
     final tx = await getTransactionById(id);
     final Map<String, dynamic> updates = {'status': newStatus};
     final now = DateTime.now().toUtc().toIso8601String();
@@ -198,16 +196,7 @@ class TransactionRemoteDatasourceImpl implements TransactionRemoteDatasource {
     if (newStatus == 'PROCESS') {
       updates['processed_at'] = now;
     } else if (newStatus == 'READY') {
-      final bagCount = plasticBagCount ?? tx.plasticBagCount;
-      final bagFeePerPlastic = tx.packagingFeePerPlastic > 0
-          ? tx.packagingFeePerPlastic
-          : TransactionEntity.defaultPackagingFeePerPlastic;
-
       updates['ready_at'] = now;
-      updates['plastic_bag_count'] = bagCount;
-      updates['packaging_fee_per_plastic'] = bagFeePerPlastic;
-      updates['total_price'] =
-          tx.serviceSubtotal + (bagCount * bagFeePerPlastic);
     } else if (newStatus == 'COMPLETED' || newStatus == 'PICKED_UP') {
       updates['completed_at'] = now;
     } else if (newStatus == 'CANCELLED') {

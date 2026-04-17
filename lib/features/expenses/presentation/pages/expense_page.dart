@@ -687,7 +687,7 @@ class _ExpensePageState extends ConsumerState<ExpensePage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${expense.category} • ${DateFormat('dd MMM yyyy, HH:mm', 'id_ID').format(expense.expenseDate.toLocal())}',
+                  '${expense.category} • ${DateFormat('dd MMM yyyy', 'id_ID').format(expense.expenseDate.toLocal())}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 12, color: _textMuted),

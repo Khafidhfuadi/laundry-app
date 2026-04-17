@@ -56,14 +56,12 @@ class TransactionRepositoryImpl implements TransactionRepository {
   @override
   Future<Either<Failure, TransactionEntity>> updateTransactionStatus(
     String id,
-    String newStatus, {
-    int? plasticBagCount,
-  }) async {
+    String newStatus,
+  ) async {
     try {
       final updated = await remoteDatasource.updateTransactionStatus(
         id,
         newStatus,
-        plasticBagCount: plasticBagCount,
       );
       return right(updated);
     } catch (e) {

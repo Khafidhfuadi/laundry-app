@@ -468,7 +468,7 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'STATUS BAYAR',
+                        'STATUS',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
@@ -504,7 +504,7 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'TOTAL LAYANAN',
+                        'LAYANAN',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
@@ -532,7 +532,7 @@ class _TransactionPageState extends ConsumerState<TransactionPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'TOTAL HARGA',
+                        'HARGA',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
