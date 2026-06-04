@@ -38,6 +38,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
   String _paymentStatus = 'UNPAID';
   final _paidAmountController = TextEditingController();
   final _plasticBagCountController = TextEditingController(text: '');
+  final _deliveryFeeController = TextEditingController();
 
   // Catatan
   final _notesController = TextEditingController();
@@ -63,6 +64,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
   void dispose() {
     _paidAmountController.dispose();
     _plasticBagCountController.dispose();
+    _deliveryFeeController.dispose();
     _notesController.dispose();
     super.dispose();
   }
@@ -82,7 +84,15 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
 
   double get _packagingFeeTotal => _plasticBagCount * _packagingFeePerPlastic;
 
-  double get _grandTotal => _totalPrice + _packagingFeeTotal;
+  double get _deliveryFee {
+    final parsed = double.tryParse(
+      _deliveryFeeController.text.trim().replaceAll(',', '.'),
+    );
+    if (parsed == null || parsed < 0) return 0.0;
+    return parsed;
+  }
+
+  double get _grandTotal => _totalPrice + _packagingFeeTotal + _deliveryFee;
 
   String _formatQuantity(double quantity) {
     final isWhole = quantity == quantity.roundToDouble();
@@ -118,6 +128,10 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
       itemLines.add(
         'Biaya bungkus ($_plasticBagCount plastik laundry x ${formatter.format(TransactionEntity.defaultPackagingFeePerPlastic)}) = ${formatter.format(_packagingFeeTotal)}',
       );
+    }
+
+    if (_deliveryFee > 0) {
+      itemLines.add('Biaya ongkir = ${formatter.format(_deliveryFee)}');
     }
 
     return itemLines;
@@ -348,7 +362,9 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                         color: isActive ? p.color : p.bgColor,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: isActive ? p.color : p.color.withValues(alpha: 0.2),
+                          color: isActive
+                              ? p.color
+                              : p.color.withValues(alpha: 0.2),
                         ),
                       ),
                       child: Column(
@@ -1649,6 +1665,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
       paidAmount: paidAmount,
       plasticBagCount: _plasticBagCount,
       packagingFeePerPlastic: TransactionEntity.defaultPackagingFeePerPlastic,
+      deliveryFee: _deliveryFee,
       notes: _notesController.text,
       perfumeId: _selectedPerfumeId,
       estimatedCompletionDate: _estimatedCompletionDate,
@@ -2439,6 +2456,43 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                   ),
                   onChanged: (_) => setState(() {}),
                 ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Biaya Ongkir',
+                  style: TextStyle(
+                    color: Color(0xFF1E293B),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: _deliveryFeeController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Biaya Ongkir (Rp)',
+                    border: const OutlineInputBorder(),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    helperText: 'Opsional',
+                    errorText: () {
+                      final raw = _deliveryFeeController.text.trim();
+                      if (raw.isEmpty) return null;
+                      final value = double.tryParse(raw.replaceAll(',', '.'));
+                      if (value == null || value < 0) {
+                        return 'Isi angka 0 atau lebih';
+                      }
+                      return null;
+                    }(),
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
                 // const SizedBox(height: 8),
                 // Align(
                 //   alignment: Alignment.centerRight,
@@ -2518,6 +2572,27 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                 ),
                 Text(
                   formatter.format(_packagingFeeTotal),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF334155),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Biaya Ongkir',
+                  style: TextStyle(
+                    color: Color(0xFF475569),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  formatter.format(_deliveryFee),
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,

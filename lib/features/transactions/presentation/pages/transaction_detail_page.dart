@@ -133,6 +133,12 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
       );
     }
 
+    if (trx.deliveryFee > 0) {
+      itemLines.add(
+        'Biaya ongkir = ${_formatter.format(trx.deliveryFee)}',
+      );
+    }
+
     return itemLines;
   }
 
@@ -1059,6 +1065,31 @@ class _TransactionDetailPageState extends ConsumerState<TransactionDetailPage> {
                 ),
                 Text(
                   _formatter.format(trx.packagingFeeTotal),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          if (trx.deliveryFee > 0) ...[
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'BIAYA ONGKIR',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey[500],
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                Text(
+                  _formatter.format(trx.deliveryFee),
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,

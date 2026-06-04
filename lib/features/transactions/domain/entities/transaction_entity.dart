@@ -58,6 +58,7 @@ class TransactionEntity {
   final double refundAmount;
   final int plasticBagCount;
   final double packagingFeePerPlastic;
+  final double deliveryFee;
   final String notes;
   final String? perfumeId;
   final DateTime estimatedCompletionDate;
@@ -86,6 +87,7 @@ class TransactionEntity {
     this.refundAmount = 0,
     this.plasticBagCount = 0,
     this.packagingFeePerPlastic = defaultPackagingFeePerPlastic,
+    this.deliveryFee = 0.0,
     required this.notes,
     this.perfumeId,
     required this.estimatedCompletionDate,
@@ -108,7 +110,7 @@ class TransactionEntity {
       return items.fold(0.0, (sum, item) => sum + item.subtotal);
     }
 
-    final subtotal = totalPrice - packagingFeeTotal;
+    final subtotal = totalPrice - packagingFeeTotal - deliveryFee;
     return subtotal < 0 ? 0 : subtotal;
   }
 
@@ -127,6 +129,7 @@ class TransactionEntity {
       packagingFeePerPlastic:
           (json['packaging_fee_per_plastic'] as num?)?.toDouble() ??
           defaultPackagingFeePerPlastic,
+      deliveryFee: (json['delivery_fee'] as num?)?.toDouble() ?? 0.0,
       notes: json['notes'] ?? '',
       perfumeId: json['perfume_id'] as String?,
       estimatedCompletionDate: DateTime.parse(
@@ -178,6 +181,7 @@ class TransactionEntity {
       'refund_amount': refundAmount,
       'plastic_bag_count': plasticBagCount,
       'packaging_fee_per_plastic': packagingFeePerPlastic,
+      'delivery_fee': deliveryFee,
       'notes': notes,
       if (perfumeId != null) 'perfume_id': perfumeId,
       'estimated_completion_date': estimatedCompletionDate
