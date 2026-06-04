@@ -1,15 +1,15 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide showDateRangePicker;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../outlet/presentation/controllers/active_outlet_controller.dart';
 import '../controllers/report_customer_insight_controller.dart';
+import '../widgets/date_range_picker.dart';
 
 enum CustomerInsightRangePreset {
   today,
+  yesterday,
   last7Days,
-  last30Days,
-  thisMonth,
   custom,
 }
 
@@ -25,7 +25,7 @@ class _ReportCustomerInsightPageState
     extends ConsumerState<ReportCustomerInsightPage> {
   CustomerInsightRangePreset _selectedPreset =
       CustomerInsightRangePreset.last7Days;
-  DateTimeRange? _customRange;
+  DateRangeResult? _customRange;
 
   @override
   void initState() {
@@ -42,19 +42,12 @@ class _ReportCustomerInsightPageState
     switch (preset) {
       case CustomerInsightRangePreset.today:
         return DateTimeRange(start: today, end: today);
+      case CustomerInsightRangePreset.yesterday:
+        final yesterday = today.subtract(const Duration(days: 1));
+        return DateTimeRange(start: yesterday, end: yesterday);
       case CustomerInsightRangePreset.last7Days:
         return DateTimeRange(
           start: today.subtract(const Duration(days: 6)),
-          end: today,
-        );
-      case CustomerInsightRangePreset.last30Days:
-        return DateTimeRange(
-          start: today.subtract(const Duration(days: 29)),
-          end: today,
-        );
-      case CustomerInsightRangePreset.thisMonth:
-        return DateTimeRange(
-          start: DateTime(now.year, now.month, 1),
           end: today,
         );
       case CustomerInsightRangePreset.custom:
@@ -88,53 +81,40 @@ class _ReportCustomerInsightPageState
 
   Future<void> _onSelectPreset(CustomerInsightRangePreset preset) async {
     if (preset == CustomerInsightRangePreset.custom) {
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-      final defaultRange =
-          _customRange ??
-          DateTimeRange(
-            start: today.subtract(const Duration(days: 6)),
-            end: today,
-          );
-
-      final picked = await showDateRangePicker(
-        context: context,
-        firstDate: today.subtract(const Duration(days: 365)),
-        lastDate: today,
-        initialDateRange: defaultRange,
-        helpText: 'Pilih Rentang Tanggal',
-      );
-      if (picked == null) return;
-
-      setState(() {
-        _selectedPreset = CustomerInsightRangePreset.custom;
-        _customRange = DateTimeRange(
-          start: _asDateOnly(picked.start),
-          end: _asDateOnly(picked.end),
-        );
-      });
-      await _loadInsight();
+      await _openCustomDatePicker();
       return;
     }
 
-    setState(() => _selectedPreset = preset);
+    setState(() {
+      _selectedPreset = preset;
+      _customRange = null;
+    });
     await _loadInsight();
   }
 
-  String _presetLabel(CustomerInsightRangePreset preset) {
-    switch (preset) {
-      case CustomerInsightRangePreset.today:
-        return 'Hari Ini';
-      case CustomerInsightRangePreset.last7Days:
-        return '7 Hari Terakhir';
-      case CustomerInsightRangePreset.last30Days:
-        return '30 Hari Terakhir';
-      case CustomerInsightRangePreset.thisMonth:
-        return 'Bulan Ini';
-      case CustomerInsightRangePreset.custom:
-        return 'Kustom';
-    }
+  Future<void> _openCustomDatePicker() async {
+    final result = await showDateRangePicker(
+      context,
+      initialRange: _customRange,
+    );
+    if (result == null) return;
+
+    setState(() {
+      _selectedPreset = CustomerInsightRangePreset.custom;
+      _customRange = result;
+    });
+    await _loadInsight();
   }
+
+  DateTimeRange _currentDisplayRange() {
+    return _resolveRangeFromPreset(_selectedPreset);
+  }
+
+  final _presetLabels = {
+    CustomerInsightRangePreset.today: 'Hari Ini',
+    CustomerInsightRangePreset.yesterday: 'Kemarin',
+    CustomerInsightRangePreset.last7Days: '7 Hari',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -164,6 +144,7 @@ class _ReportCustomerInsightPageState
         child: Column(
           children: [
             _buildFilterRow(),
+            _buildDateRangeLabel(),
             Expanded(
               child: activeOutlet.value == null
                   ? const Center(
@@ -275,48 +256,117 @@ class _ReportCustomerInsightPageState
   }
 
   Widget _buildFilterRow() {
-    const presets = [
-      CustomerInsightRangePreset.today,
-      CustomerInsightRangePreset.last7Days,
-      CustomerInsightRangePreset.last30Days,
-      CustomerInsightRangePreset.thisMonth,
-      CustomerInsightRangePreset.custom,
-    ];
+    final isCustomSelected =
+        _selectedPreset == CustomerInsightRangePreset.custom;
 
-    return SizedBox(
-      height: 46,
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        scrollDirection: Axis.horizontal,
-        itemBuilder: (context, index) {
-          final preset = presets[index];
-          final isSelected = _selectedPreset == preset;
-          return GestureDetector(
-            onTap: () => _onSelectPreset(preset),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        children: [
+          ..._presetLabels.entries.map((entry) {
+            final isSelected = _selectedPreset == entry.key;
+            return Padding(
+              padding: const EdgeInsets.only(right: 10),
+              child: GestureDetector(
+                onTap: () => _onSelectPreset(entry.key),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color(0xFF0F62FE)
+                        : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(20),
+                    border: isSelected
+                        ? null
+                        : Border.all(color: const Color(0xFFCBD5E1)),
+                  ),
+                  child: Text(
+                    entry.value,
+                    style: TextStyle(
+                      color: isSelected
+                          ? Colors.white
+                          : const Color(0xFF475569),
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+          GestureDetector(
+            onTap: _openCustomDatePicker,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: isSelected
-                    ? const Color(0xFF1D4ED8)
+                color: isCustomSelected
+                    ? const Color(0xFF0F62FE)
                     : const Color(0xFFF1F5F9),
                 borderRadius: BorderRadius.circular(20),
-                border: isSelected
+                border: isCustomSelected
                     ? null
                     : Border.all(color: const Color(0xFFCBD5E1)),
               ),
-              child: Text(
-                _presetLabel(preset),
-                style: TextStyle(
-                  color: isSelected ? Colors.white : const Color(0xFF475569),
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Kustom',
+                    style: TextStyle(
+                      color: isCustomSelected
+                          ? Colors.white
+                          : const Color(0xFF475569),
+                      fontWeight: isCustomSelected
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 18,
+                    color: isCustomSelected
+                        ? Colors.white
+                        : const Color(0xFF475569),
+                  ),
+                ],
               ),
             ),
-          );
-        },
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemCount: presets.length,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDateRangeLabel() {
+    final range = _currentDisplayRange();
+    final dateFormat = DateFormat('MMM d, yyyy');
+    final startLabel = dateFormat.format(range.start);
+    final endLabel = dateFormat.format(range.end);
+    final isSingleDay =
+        range.start.year == range.end.year &&
+        range.start.month == range.end.month &&
+        range.start.day == range.end.day;
+    final rangeText = isSingleDay ? startLabel : '$startLabel - $endLabel';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          rangeText,
+          style: const TextStyle(
+            color: Color(0xFF94A3B8),
+            fontSize: 12,
+          ),
+        ),
       ),
     );
   }
