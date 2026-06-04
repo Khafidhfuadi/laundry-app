@@ -348,7 +348,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                         color: isActive ? p.color : p.bgColor,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: isActive ? p.color : p.color.withOpacity(0.2),
+                          color: isActive ? p.color : p.color.withValues(alpha: 0.2),
                         ),
                       ),
                       child: Column(
@@ -689,8 +689,8 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                                                 width: 44,
                                                 height: 44,
                                                 decoration: BoxDecoration(
-                                                  color: color.withOpacity(
-                                                    0.12,
+                                                  color: color.withValues(
+                                                    alpha: 0.12,
                                                   ),
                                                   borderRadius:
                                                       BorderRadius.circular(12),
@@ -1864,7 +1864,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                               width: 42,
                               height: 42,
                               decoration: BoxDecoration(
-                                color: color.withOpacity(0.12),
+                                color: color.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(11),
                               ),
                               child: Center(
@@ -2239,7 +2239,7 @@ class _AddTransactionPageState extends ConsumerState<AddTransactionPage> {
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF0F62FE).withOpacity(0.25),
+                    color: const Color(0xFF0F62FE).withValues(alpha: 0.25),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),

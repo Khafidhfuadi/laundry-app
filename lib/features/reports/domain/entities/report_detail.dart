@@ -1,6 +1,6 @@
 enum ReportDetailType { turnover, income, expense, netProfit }
 
-enum ReportDetailRangePreset { today, last7Days, last30Days, thisMonth, custom }
+enum ReportDetailRangePreset { today, yesterday, last7Days, custom }
 
 enum ReportLogKind { income, expense }
 

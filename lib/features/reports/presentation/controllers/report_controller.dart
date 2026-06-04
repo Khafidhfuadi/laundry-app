@@ -23,7 +23,7 @@ final _reportExpenseDatasourceProvider = Provider<ExpenseRemoteDatasource>((
 });
 
 /// Filter period yang tersedia di halaman laporan.
-enum ReportPeriod { thisWeek, thisMonth, thisYear }
+enum ReportPeriod { today, yesterday, last7Days, custom }
 
 final reportControllerProvider =
     AsyncNotifierProvider<ReportController, ReportSummary>(
@@ -72,42 +72,79 @@ class ReportController extends AsyncNotifier<ReportSummary> {
     return ReportSummary.empty();
   }
 
+  /// Memuat laporan berdasarkan custom date range (untuk mode Kustom).
+  Future<void> loadReportWithRange(
+    String outletId,
+    DateTime customStart,
+    DateTime customEnd,
+  ) async {
+    final daysBack = customEnd.difference(customStart).inDays + 1;
+    final previousEnd = customStart.subtract(const Duration(days: 1));
+    final previousStart =
+        previousEnd.subtract(Duration(days: daysBack - 1));
+    await _loadReportInternal(
+      outletId: outletId,
+      currentStartDate: customStart,
+      currentEndDate: customEnd,
+      previousStartDate: previousStart,
+      previousEndDate: previousEnd,
+      daysBack: daysBack,
+    );
+  }
+
   Future<void> loadReport(String outletId, ReportPeriod period) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    late DateTime currentStartDate;
+    final currentEndDate = today;
+    late DateTime previousStartDate;
+    late DateTime previousEndDate;
+    int daysBack;
+
+    if (period == ReportPeriod.today) {
+      daysBack = 1;
+      currentStartDate = today;
+      previousEndDate = today.subtract(const Duration(days: 1));
+      previousStartDate = previousEndDate;
+    } else if (period == ReportPeriod.yesterday) {
+      daysBack = 1;
+      currentStartDate = today.subtract(const Duration(days: 1));
+      previousEndDate = today.subtract(const Duration(days: 2));
+      previousStartDate = previousEndDate;
+    } else {
+      // last7Days (default)
+      daysBack = 7;
+      currentStartDate = today.subtract(const Duration(days: 6));
+      previousEndDate = currentStartDate.subtract(const Duration(days: 1));
+      previousStartDate = previousEndDate.subtract(const Duration(days: 6));
+    }
+
+    await _loadReportInternal(
+      outletId: outletId,
+      currentStartDate: currentStartDate,
+      currentEndDate: currentEndDate,
+      previousStartDate: previousStartDate,
+      previousEndDate: previousEndDate,
+      daysBack: daysBack,
+    );
+  }
+
+  Future<void> _loadReportInternal({
+    required String outletId,
+    required DateTime currentStartDate,
+    required DateTime currentEndDate,
+    required DateTime previousStartDate,
+    required DateTime previousEndDate,
+    required int daysBack,
+  }) async {
     state = const AsyncValue.loading();
     try {
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-
-      // Tentukan rentang tanggal saat ini + periode pembanding sebelumnya
-      late DateTime currentStartDate;
-      final currentEndDate = today;
-      late DateTime previousStartDate;
-      late DateTime previousEndDate;
-      int daysBack;
-
-      if (period == ReportPeriod.thisWeek) {
-        daysBack = 7;
-        currentStartDate = today.subtract(const Duration(days: 6));
-        previousEndDate = currentStartDate.subtract(const Duration(days: 1));
-        previousStartDate = previousEndDate.subtract(const Duration(days: 6));
-      } else if (period == ReportPeriod.thisYear) {
-        currentStartDate = DateTime(now.year, 1, 1);
-        daysBack = today.difference(currentStartDate).inDays + 1;
-        previousStartDate = DateTime(now.year - 1, 1, 1);
-        previousEndDate = previousStartDate.add(Duration(days: daysBack - 1));
-      } else {
-        // thisMonth
-        currentStartDate = DateTime(now.year, now.month, 1);
-        daysBack = today.difference(currentStartDate).inDays + 1;
-        previousStartDate = DateTime(now.year, now.month - 1, 1);
-        final previousMonthLastDay = DateTime(now.year, now.month, 0);
-        final idealPreviousEnd = previousStartDate.add(
-          Duration(days: daysBack - 1),
-        );
-        previousEndDate = idealPreviousEnd.isAfter(previousMonthLastDay)
-            ? previousMonthLastDay
-            : idealPreviousEnd;
-      }
+      final today = DateTime(
+        DateTime.now().year,
+        DateTime.now().month,
+        DateTime.now().day,
+      );
 
       // Ambil data dari Supabase secara paralel
       final txFuture = _txDs.getTransactions(outletId: outletId);
@@ -291,7 +328,8 @@ class ReportController extends AsyncNotifier<ReportSummary> {
       final activeCustomerIds = omsetTransactions
           .map((t) => t.customerId)
           .toSet();
-      final startOfMonth = DateTime(now.year, now.month, 1);
+      final nowForMonth = DateTime.now();
+      final startOfMonth = DateTime(nowForMonth.year, nowForMonth.month, 1);
       final newCustomerIds = omsetTransactions
           .where((t) => !t.createdAt.isBefore(startOfMonth))
           .map((t) => t.customerId)

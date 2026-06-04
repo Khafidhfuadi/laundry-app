@@ -448,7 +448,7 @@ class _AddEditServiceBottomSheetState
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _primary,
                     foregroundColor: Colors.white,
-                    disabledBackgroundColor: _primary.withOpacity(0.5),
+                    disabledBackgroundColor: _primary.withValues(alpha: 0.5),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
@@ -502,7 +502,7 @@ class _AddEditServiceBottomSheetState
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),

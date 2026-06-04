@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/presentation/widgets/custom_bottom_nav.dart';
-import '../../../authentication/presentation/controllers/auth_controller.dart';
 import '../../../outlet/presentation/controllers/active_outlet_controller.dart';
 import '../../../transactions/presentation/controllers/transaction_controller.dart';
 
@@ -65,11 +64,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    final userState = ref.watch(authControllerProvider);
     final trxState = ref.watch(transactionControllerProvider);
     final activeOutletState = ref.watch(activeOutletProvider);
 
-    final userName = userState.value?.name ?? 'Admin';
     final outletName = activeOutletState.when(
       data: (outlet) => outlet != null
           ? outlet.name.toUpperCase()

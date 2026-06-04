@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide showDateRangePicker;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +7,7 @@ import '../../../../core/presentation/widgets/custom_bottom_nav.dart';
 import '../../../outlet/presentation/controllers/active_outlet_controller.dart';
 import '../controllers/report_controller.dart';
 import '../../domain/entities/report_summary.dart';
+import '../widgets/date_range_picker.dart';
 
 class ReportPage extends ConsumerStatefulWidget {
   const ReportPage({super.key});
@@ -16,12 +17,13 @@ class ReportPage extends ConsumerStatefulWidget {
 }
 
 class _ReportPageState extends ConsumerState<ReportPage> {
-  ReportPeriod _selectedPeriod = ReportPeriod.thisWeek;
+  ReportPeriod _selectedPeriod = ReportPeriod.last7Days;
+  DateRangeResult? _customDateRange;
 
   final _periodLabels = {
-    ReportPeriod.thisWeek: 'Minggu Ini',
-    ReportPeriod.thisMonth: 'Bulan Ini',
-    ReportPeriod.thisYear: 'Tahun Ini',
+    ReportPeriod.today: 'Hari Ini',
+    ReportPeriod.yesterday: 'Kemarin',
+    ReportPeriod.last7Days: '7 Hari',
   };
 
   @override
@@ -35,7 +37,17 @@ class _ReportPageState extends ConsumerState<ReportPage> {
   void _loadReport() {
     final outletState = ref.read(activeOutletProvider);
     final outletId = outletState.value?.id ?? '';
-    if (outletId.isNotEmpty) {
+    if (outletId.isEmpty) return;
+
+    if (_selectedPeriod == ReportPeriod.custom && _customDateRange != null) {
+      ref
+          .read(reportControllerProvider.notifier)
+          .loadReportWithRange(
+            outletId,
+            _customDateRange!.start,
+            _customDateRange!.end,
+          );
+    } else {
       ref
           .read(reportControllerProvider.notifier)
           .loadReport(outletId, _selectedPeriod);
@@ -43,11 +55,55 @@ class _ReportPageState extends ConsumerState<ReportPage> {
   }
 
   void _switchPeriod(ReportPeriod period) {
-    setState(() => _selectedPeriod = period);
-    final outletState = ref.read(activeOutletProvider);
-    final outletId = outletState.value?.id ?? '';
-    if (outletId.isNotEmpty) {
-      ref.read(reportControllerProvider.notifier).loadReport(outletId, period);
+    setState(() {
+      _selectedPeriod = period;
+      if (period != ReportPeriod.custom) _customDateRange = null;
+    });
+    _loadReport();
+  }
+
+  Future<void> _openCustomDatePicker() async {
+    final result = await showDateRangePicker(
+      context,
+      initialRange: _customDateRange,
+    );
+    if (result != null) {
+      setState(() {
+        _selectedPeriod = ReportPeriod.custom;
+        _customDateRange = result;
+      });
+      _loadReport();
+    }
+  }
+
+  /// Menghitung DateTimeRange yang sedang aktif untuk display.
+  DateTimeRange _currentDisplayRange() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    if (_selectedPeriod == ReportPeriod.custom && _customDateRange != null) {
+      return DateTimeRange(
+        start: _customDateRange!.start,
+        end: _customDateRange!.end,
+      );
+    }
+
+    switch (_selectedPeriod) {
+      case ReportPeriod.today:
+        return DateTimeRange(start: today, end: today);
+      case ReportPeriod.yesterday:
+        final yesterday = today.subtract(const Duration(days: 1));
+        return DateTimeRange(start: yesterday, end: yesterday);
+      case ReportPeriod.last7Days:
+        return DateTimeRange(
+          start: today.subtract(const Duration(days: 6)),
+          end: today,
+        );
+      default:
+        return DateTimeRange(
+          start: today.subtract(const Duration(days: 6)),
+          end: today,
+        );
     }
   }
 
@@ -95,6 +151,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
                 children: [
                   _buildAppBar(),
                   _buildFilterChips(),
+                  _buildDateRangeLabel(),
                   _buildSummaryGrid(summary),
                   _buildBarChartSection(summary),
                   _buildTopServicesSection(summary),
@@ -148,16 +205,19 @@ class _ReportPageState extends ConsumerState<ReportPage> {
               ),
             ],
           ),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFE0E7FF),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.calendar_today_outlined,
-              color: Color(0xFF0F62FE),
-              size: 20,
+          GestureDetector(
+            onTap: _openCustomDatePicker,
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE0E7FF),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.calendar_today_outlined,
+                color: Color(0xFF0F62FE),
+                size: 20,
+              ),
             ),
           ),
         ],
@@ -169,44 +229,112 @@ class _ReportPageState extends ConsumerState<ReportPage> {
   // Filter Chips
   // -------------------------------------------------------------------------
   Widget _buildFilterChips() {
+    final isCustomSelected = _selectedPeriod == ReportPeriod.custom;
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Row(
-        children: _periodLabels.entries.map((entry) {
-          final isSelected = _selectedPeriod == entry.key;
-          return Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: GestureDetector(
-              onTap: () => _switchPeriod(entry.key),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? const Color(0xFF0F62FE)
-                      : const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(20),
-                  border: isSelected
-                      ? null
-                      : Border.all(color: const Color(0xFFCBD5E1)),
-                ),
-                child: Text(
-                  entry.value,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : const Color(0xFF475569),
-                    fontWeight: isSelected
-                        ? FontWeight.w600
-                        : FontWeight.normal,
-                    fontSize: 13,
+        children: [
+          // Quick-filter chips
+          ..._periodLabels.entries.map((entry) {
+            final isSelected = _selectedPeriod == entry.key;
+            return Padding(
+              padding: const EdgeInsets.only(right: 10),
+              child: GestureDetector(
+                onTap: () => _switchPeriod(entry.key),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color(0xFF0F62FE)
+                        : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(20),
+                    border: isSelected
+                        ? null
+                        : Border.all(color: const Color(0xFFCBD5E1)),
+                  ),
+                  child: Text(
+                    entry.value,
+                    style: TextStyle(
+                      color: isSelected
+                          ? Colors.white
+                          : const Color(0xFF475569),
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
               ),
+            );
+          }),
+          // Kustom chip with dropdown icon
+          GestureDetector(
+            onTap: _openCustomDatePicker,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: isCustomSelected
+                    ? const Color(0xFF0F62FE)
+                    : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(20),
+                border: isCustomSelected
+                    ? null
+                    : Border.all(color: const Color(0xFFCBD5E1)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Kustom',
+                    style: TextStyle(
+                      color: isCustomSelected
+                          ? Colors.white
+                          : const Color(0xFF475569),
+                      fontWeight: isCustomSelected
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 18,
+                    color: isCustomSelected
+                        ? Colors.white
+                        : const Color(0xFF475569),
+                  ),
+                ],
+              ),
             ),
-          );
-        }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDateRangeLabel() {
+    final range = _currentDisplayRange();
+    final dateFormat = DateFormat('MMM d, yyyy');
+    final startLabel = dateFormat.format(range.start);
+    final endLabel = dateFormat.format(range.end);
+    final isSingleDay =
+        range.start.year == range.end.year &&
+        range.start.month == range.end.month &&
+        range.start.day == range.end.day;
+    final rangeText = isSingleDay ? startLabel : '$startLabel - $endLabel';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+      child: Text(
+        rangeText,
+        style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
       ),
     );
   }
@@ -578,7 +706,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             children: [
               Expanded(
                 child: Text(
-                  'Tren Keuangan (${_periodLabels[_selectedPeriod] ?? "Periode Ini"})',
+                  'Tren Keuangan (${_selectedPeriod == ReportPeriod.custom ? "Kustom" : _periodLabels[_selectedPeriod] ?? "Periode Ini"})',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -739,19 +867,29 @@ class _ReportPageState extends ConsumerState<ReportPage> {
     final startDate = today.subtract(Duration(days: totalDays - 1));
     final date = startDate.add(Duration(days: indexInPeriod));
 
-    if (_selectedPeriod == ReportPeriod.thisWeek) {
+    if (_selectedPeriod == ReportPeriod.today ||
+        _selectedPeriod == ReportPeriod.yesterday) {
       return DateFormat('EEE', 'id_ID').format(date);
     }
-    if (_selectedPeriod == ReportPeriod.thisMonth) {
+    if (_selectedPeriod == ReportPeriod.last7Days) {
+      return DateFormat('EEE', 'id_ID').format(date);
+    }
+    // Custom range
+    if (totalDays <= 14) {
       return DateFormat('d MMM', 'id_ID').format(date);
     }
     return DateFormat('d/M', 'id_ID').format(date);
   }
 
   String _comparisonBaselineLabel() {
-    if (_selectedPeriod == ReportPeriod.thisWeek) return 'minggu lalu';
-    if (_selectedPeriod == ReportPeriod.thisMonth) return 'bulan lalu';
-    return 'tahun lalu';
+    if (_selectedPeriod == ReportPeriod.today) return 'kemarin';
+    if (_selectedPeriod == ReportPeriod.yesterday) return 'hari sebelumnya';
+    if (_selectedPeriod == ReportPeriod.last7Days) return '7 hari sebelumnya';
+    // Custom
+    if (_customDateRange != null) {
+      return 'periode sebelumnya';
+    }
+    return 'periode sebelumnya';
   }
 
   String _formatTrendYAxis(double value) {

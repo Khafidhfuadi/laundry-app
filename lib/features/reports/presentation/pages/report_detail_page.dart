@@ -1,11 +1,12 @@
 import 'package:fl_chart/fl_chart.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide showDateRangePicker;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../outlet/presentation/controllers/active_outlet_controller.dart';
 import '../../domain/entities/report_detail.dart';
 import '../controllers/report_detail_controller.dart';
+import '../widgets/date_range_picker.dart';
 
 class ReportDetailPage extends ConsumerStatefulWidget {
   final ReportDetailType type;
@@ -18,7 +19,7 @@ class ReportDetailPage extends ConsumerStatefulWidget {
 
 class _ReportDetailPageState extends ConsumerState<ReportDetailPage> {
   ReportDetailRangePreset _selectedPreset = ReportDetailRangePreset.last7Days;
-  DateTimeRange? _customRange;
+  DateRangeResult? _customRange;
 
   @override
   void initState() {
@@ -35,19 +36,12 @@ class _ReportDetailPageState extends ConsumerState<ReportDetailPage> {
     switch (preset) {
       case ReportDetailRangePreset.today:
         return DateTimeRange(start: today, end: today);
+      case ReportDetailRangePreset.yesterday:
+        final yesterday = today.subtract(const Duration(days: 1));
+        return DateTimeRange(start: yesterday, end: yesterday);
       case ReportDetailRangePreset.last7Days:
         return DateTimeRange(
           start: today.subtract(const Duration(days: 6)),
-          end: today,
-        );
-      case ReportDetailRangePreset.last30Days:
-        return DateTimeRange(
-          start: today.subtract(const Duration(days: 29)),
-          end: today,
-        );
-      case ReportDetailRangePreset.thisMonth:
-        return DateTimeRange(
-          start: DateTime(now.year, now.month, 1),
           end: today,
         );
       case ReportDetailRangePreset.custom:
@@ -82,37 +76,34 @@ class _ReportDetailPageState extends ConsumerState<ReportDetailPage> {
 
   Future<void> _onSelectPreset(ReportDetailRangePreset preset) async {
     if (preset == ReportDetailRangePreset.custom) {
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-      final defaultRange =
-          _customRange ??
-          DateTimeRange(
-            start: today.subtract(const Duration(days: 6)),
-            end: today,
-          );
-
-      final picked = await showDateRangePicker(
-        context: context,
-        firstDate: today.subtract(const Duration(days: 365)),
-        lastDate: today,
-        initialDateRange: defaultRange,
-        helpText: 'Pilih Rentang Tanggal',
-      );
-      if (picked == null) return;
-
-      setState(() {
-        _selectedPreset = ReportDetailRangePreset.custom;
-        _customRange = DateTimeRange(
-          start: _asDateOnly(picked.start),
-          end: _asDateOnly(picked.end),
-        );
-      });
-      await _loadDetail();
+      await _openCustomDatePicker();
       return;
     }
 
-    setState(() => _selectedPreset = preset);
+    setState(() {
+      _selectedPreset = preset;
+      _customRange = null;
+    });
     await _loadDetail();
+  }
+
+  Future<void> _openCustomDatePicker() async {
+    final result = await showDateRangePicker(
+      context,
+      initialRange: _customRange,
+    );
+    if (result == null) return;
+
+    setState(() {
+      _selectedPreset = ReportDetailRangePreset.custom;
+      _customRange = result;
+    });
+    await _loadDetail();
+  }
+
+  /// Menghitung DateTimeRange yang sedang aktif untuk display.
+  DateTimeRange _currentDisplayRange() {
+    return _resolveRangeFromPreset(_selectedPreset);
   }
 
   String _title() {
@@ -141,20 +132,11 @@ class _ReportDetailPageState extends ConsumerState<ReportDetailPage> {
     }
   }
 
-  String _presetLabel(ReportDetailRangePreset preset) {
-    switch (preset) {
-      case ReportDetailRangePreset.today:
-        return 'Hari Ini';
-      case ReportDetailRangePreset.last7Days:
-        return '7 Hari Terakhir';
-      case ReportDetailRangePreset.last30Days:
-        return '30 Hari Terakhir';
-      case ReportDetailRangePreset.thisMonth:
-        return 'Bulan Ini';
-      case ReportDetailRangePreset.custom:
-        return 'Kustom';
-    }
-  }
+  final _presetLabels = {
+    ReportDetailRangePreset.today: 'Hari Ini',
+    ReportDetailRangePreset.yesterday: 'Kemarin',
+    ReportDetailRangePreset.last7Days: '7 Hari',
+  };
 
   double _pointValue(ReportSeriesPoint p) {
     switch (widget.type) {
@@ -171,11 +153,15 @@ class _ReportDetailPageState extends ConsumerState<ReportDetailPage> {
 
   String _labelForDate(DateTime date) {
     if (_selectedPreset == ReportDetailRangePreset.today ||
+        _selectedPreset == ReportDetailRangePreset.yesterday ||
         _selectedPreset == ReportDetailRangePreset.last7Days) {
       return DateFormat('EEE', 'id_ID').format(date);
     }
-    if (_selectedPreset == ReportDetailRangePreset.thisMonth) {
-      return DateFormat('d', 'id_ID').format(date);
+    // Custom range
+    final range = _currentDisplayRange();
+    final totalDays = range.end.difference(range.start).inDays + 1;
+    if (totalDays <= 14) {
+      return DateFormat('d MMM', 'id_ID').format(date);
     }
     return DateFormat('d/M', 'id_ID').format(date);
   }
@@ -208,6 +194,7 @@ class _ReportDetailPageState extends ConsumerState<ReportDetailPage> {
         child: Column(
           children: [
             _buildFilterRow(),
+            _buildDateRangeLabel(),
             Expanded(
               child: activeOutlet.value == null
                   ? const Center(
@@ -320,46 +307,117 @@ class _ReportDetailPageState extends ConsumerState<ReportDetailPage> {
   }
 
   Widget _buildFilterRow() {
-    const presets = [
-      ReportDetailRangePreset.today,
-      ReportDetailRangePreset.last7Days,
-      ReportDetailRangePreset.last30Days,
-      ReportDetailRangePreset.thisMonth,
-      ReportDetailRangePreset.custom,
-    ];
+    final isCustomSelected = _selectedPreset == ReportDetailRangePreset.custom;
 
-    return SizedBox(
-      height: 46,
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        scrollDirection: Axis.horizontal,
-        itemBuilder: (context, index) {
-          final preset = presets[index];
-          final isSelected = _selectedPreset == preset;
-          return GestureDetector(
-            onTap: () => _onSelectPreset(preset),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        children: [
+          ..._presetLabels.entries.map((entry) {
+            final isSelected = _selectedPreset == entry.key;
+            return Padding(
+              padding: const EdgeInsets.only(right: 10),
+              child: GestureDetector(
+                onTap: () => _onSelectPreset(entry.key),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? _primaryColor()
+                        : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(20),
+                    border: isSelected
+                        ? null
+                        : Border.all(color: const Color(0xFFCBD5E1)),
+                  ),
+                  child: Text(
+                    entry.value,
+                    style: TextStyle(
+                      color: isSelected
+                          ? Colors.white
+                          : const Color(0xFF475569),
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+          // Kustom chip with dropdown icon
+          GestureDetector(
+            onTap: _openCustomDatePicker,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: isSelected ? _primaryColor() : const Color(0xFFF1F5F9),
+                color: isCustomSelected
+                    ? _primaryColor()
+                    : const Color(0xFFF1F5F9),
                 borderRadius: BorderRadius.circular(20),
-                border: isSelected
+                border: isCustomSelected
                     ? null
                     : Border.all(color: const Color(0xFFCBD5E1)),
               ),
-              child: Text(
-                _presetLabel(preset),
-                style: TextStyle(
-                  color: isSelected ? Colors.white : const Color(0xFF475569),
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Kustom',
+                    style: TextStyle(
+                      color: isCustomSelected
+                          ? Colors.white
+                          : const Color(0xFF475569),
+                      fontWeight: isCustomSelected
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 18,
+                    color: isCustomSelected
+                        ? Colors.white
+                        : const Color(0xFF475569),
+                  ),
+                ],
               ),
             ),
-          );
-        },
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemCount: presets.length,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDateRangeLabel() {
+    final range = _currentDisplayRange();
+    final dateFormat = DateFormat('MMM d, yyyy');
+    final startLabel = dateFormat.format(range.start);
+    final endLabel = dateFormat.format(range.end);
+    final isSingleDay =
+        range.start.year == range.end.year &&
+        range.start.month == range.end.month &&
+        range.start.day == range.end.day;
+    final rangeText = isSingleDay ? startLabel : '$startLabel - $endLabel';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          rangeText,
+          style: const TextStyle(
+            color: Color(0xFF94A3B8),
+            fontSize: 12,
+          ),
+        ),
       ),
     );
   }
