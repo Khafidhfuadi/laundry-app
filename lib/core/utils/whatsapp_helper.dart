@@ -62,6 +62,9 @@ Terima kasih telah menggunakan layanan kami.
 Nomor Nota: *$transactionCode*
 Total Tagihan: *Rp${totalAmount.toInt()}*
 
+Metode pembayaran dapat ke :
+BSI 7319374404 an Purwita
+
 Silakan simpan nomor ini untuk pengecekan status cucian Anda.
 Terima kasih! 🙏
 ''';
@@ -181,6 +184,11 @@ Total : *${currency.format(totalAmount)}*
 Dibayar : *${currency.format(paidAmount)}*
 Sisa : *${currency.format(remaining)}*
 Status Bayar : *$paymentLabel*$notesSection
+
+------------------------------
+
+Metode pembayaran dapat ke :
+BSI 7319374404 an Purwita
 
 ------------------------------
 
